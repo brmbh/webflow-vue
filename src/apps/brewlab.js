@@ -17,9 +17,15 @@ const store = useSharedStore('brewlab', { cart: [], selectedSlug: null }, { pers
 // they stay a code-level map so the collection schema stays untouched.
 const CDN = 'https://cdn.prod.website-files.com/61d44e644e2a5769e18a848c';
 const BANNERS = {
-  'minas-velvet': `${CDN}/6a7465f3bac8eef224a39d5e_brewlab-banner-minas-velvet.png`,
-  'huila-reserve': `${CDN}/6a7465f2e092a358dabf3985_brewlab-banner-huila-reserve.png`,
-  'sidamo-dusk': `${CDN}/6a7465f3ea4ee09962024fdd_brewlab-banner-sidamo-dusk.png`,
+  'minas-velvet': `${CDN}/6a746a1e10573c509b69ac17_banner2-minas-velvet.png`,
+  'nyeri-peak': `${CDN}/6a746a1e0213f516c0ef9879_banner2-nyeri-peak.png`,
+  'tarrazu-bright': `${CDN}/6a746a1f29e36a03dae0ba51_banner2-tarrazu-bright.png`,
+  'huila-reserve': `${CDN}/6a746a1f9e6664fca1bcdaeb_banner2-huila-reserve.png`,
+  'antigua-stone': `${CDN}/6a746a1fe03932b5908c565f_banner2-antigua-stone.png`,
+  'kivu-shores': `${CDN}/6a746a1f364c03703f61a4b3_banner2-kivu-shores.png`,
+  'sidamo-dusk': `${CDN}/6a746a20930988014d12f84a_banner2-sidamo-dusk.png`,
+  'java-ember': `${CDN}/6a746a2086f952d66bda00b9_banner2-java-ember.png`,
+  'apaneca-cloud': `${CDN}/6a746a20ee8c42769dc5e8ba_banner2-apaneca-cloud.png`,
 };
 const BAGS = {
   '250 g': `${CDN}/6a7465f2c67dec4f65b363fa_brewlab-bag-250g.png`,
