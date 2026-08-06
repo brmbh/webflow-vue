@@ -11,7 +11,7 @@ Verify the page is in the **clean post-rollback state** (no filter present yet):
 - Open `https://accessible-components-site-bdd137.webflow.io/vue-mcp?debug` in a browser
 - Page should show: counter, +1/-1/+5 buttons, Doubled, Status, "From useWebflowCMS() — 10 posts" with the unfiltered v-for list, greeting line
 - **No `<input>` element above the list** — that's the rollback marker
-- Vite dev server running: `cd ~/Development/refokus-agency/vueflow-ai && npm run dev`
+- Vite dev server running: `cd ~/Development/personal/vueflow-ai && npm run dev`
 - Webflow Designer open on the VUE MCP page (required for `element_builder` calls)
 - Local repo is on the right branch / commit (whatever is "clean Vueflow demo state")
 
@@ -19,7 +19,7 @@ Verify the page is in the **clean post-rollback state** (no filter present yet):
 
 ## The prompt to give Claude
 
-Type this verbatim in a Claude Code session inside `~/Development/refokus-agency/vueflow-ai`:
+Type this verbatim in a Claude Code session inside `~/Development/personal/vueflow-ai`:
 
 > Add a live filter input above the blog post list on the VUE MCP page of Accessible Components. Use a Custom Element `<input>` with `v-model` bound to a new `query` ref, add a `filteredPosts` computed that case-insensitive-filters `collections.blogPosts` by name, repoint the v-for to `filteredPosts`, and update the h3 count to show `filtered / total`. Publish + HMR reload as usual.
 
