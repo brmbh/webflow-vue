@@ -12,6 +12,21 @@ import { useWebflowCMS } from '../composables/useWebflowCMS.js';
 
 const store = useSharedStore('brewlab', { cart: [], selectedSlug: null }, { persist: true });
 
+// Demo assets (Webflow CDN) — swapped by slug/size at render time.
+// A production build would move these onto the CMS items; for the wireframe
+// they stay a code-level map so the collection schema stays untouched.
+const CDN = 'https://cdn.prod.website-files.com/61d44e644e2a5769e18a848c';
+const BANNERS = {
+  'minas-velvet': `${CDN}/6a7465f3bac8eef224a39d5e_brewlab-banner-minas-velvet.png`,
+  'huila-reserve': `${CDN}/6a7465f2e092a358dabf3985_brewlab-banner-huila-reserve.png`,
+  'sidamo-dusk': `${CDN}/6a7465f3ea4ee09962024fdd_brewlab-banner-sidamo-dusk.png`,
+};
+const BAGS = {
+  '250 g': `${CDN}/6a7465f2c67dec4f65b363fa_brewlab-bag-250g.png`,
+  '500 g': `${CDN}/6a7465f26a3f83e346b3fb35_brewlab-bag-500g.png`,
+  '1 kg': `${CDN}/6a7465f2e092a358dabf393d_brewlab-bag-1kg.png`,
+};
+
 const cms = useWebflowCMS();
 const beans = computed(() =>
   (cms.collections.value.beans || []).map((b) => ({ ...b, price: Number(b.price) }))
@@ -57,7 +72,9 @@ mountIsland('#vf-shop', 'shop', () => {
     console.log(`[vueflow:brewlab] selected "${bean.name}" — configurator + origin islands react`);
   };
 
-  return { beans, filtered, query, roasts, roast, setRoast, select, selectedSlug };
+  const bannerFor = (bean) => BANNERS[bean.slug] || null;
+
+  return { beans, filtered, query, roasts, roast, setRoast, select, selectedSlug, bannerFor };
 });
 
 // --- Island: subscription configurator -------------------------------------
@@ -98,7 +115,9 @@ mountIsland('#vf-config', 'configurator', () => {
     console.log('[vueflow:brewlab] addToCart', item, `→ cart size ${s.cart.length}`);
   };
 
-  return { bean, grinds, grind, sizes, size, freqs, freq, price, addToCart };
+  const bagImg = computed(() => BAGS[size.value.label] || null);
+
+  return { bean, grinds, grind, sizes, size, freqs, freq, price, addToCart, bagImg };
 });
 
 // --- Island: origin info from a public API ---------------------------------
