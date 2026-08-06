@@ -51,6 +51,8 @@ Every island calling `useSharedStore('cart')` gets the same reactive object — 
   2. **Field elements** — `<span data-field="name">…</span>` children whose *text* is CMS-bound. This is the **API-scaffoldable** variant: the Webflow MCP can bind CMS fields to element text (`set_settings` key `"text"` + cms binding) but not to attribute values.
 - **Collection List via MCP**: the list's `source` setting takes `static_json` `{"collectionId":"…"}` on the DynamoWrapper element.
 - **Styles via MCP**: `set_style`'s `style_names` array resolves as a **combo-class chain**, not stacked globals — register shared modifiers (e.g. `gutter-medium`) as combos under each base class.
+- **Bundle hosting**: Webflow assets reject `.js` — upload `dist/main.js` renamed to `bundle.txt`; the asset CDN serves it without `X-Content-Type-Options`, so a classic `<script src>` executes it. Update the bridge by re-registering the same `displayName` with a bumped version (`update_registered_script` 404s) and re-applying via `set_page_scripts`.
+- **Known MCP limits**: native Lightbox media items aren't writable (Designer only); `set_text` HTML-escapes (no JSON payloads — use an HtmlEmbed's `code` setting); body elements reject classes (scope body styles with `body:has(#your-island)` CSS in head code).
 
 ## Case studies (live on the sandbox)
 
