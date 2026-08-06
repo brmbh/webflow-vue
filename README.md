@@ -2,7 +2,7 @@
 
 White-label boilerplate for Vue-on-Webflow hybrid sites. Vue runtime from CDN, app code bundled with Vite, served via a debug-aware bridge script in Webflow custom code. Driven end-to-end by Claude + the Webflow MCP — bridge install, DOM scaffold, code edit, publish, and HMR auto-reload all from one chat session.
 
-**Project dashboard (single source of truth):** `~/Development/haufe/Haufe Brain/Automatic-Brain/Projects/Vueflow-AI/dashboard.md`
+**Project dashboard (single source of truth):** `~/Syncthing/Obsidian/Automatic-Brain/Projects/Vueflow-AI/dashboard.md`
 
 ## Why islands
 

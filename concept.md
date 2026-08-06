@@ -1,7 +1,7 @@
 # Vueflow AI
 
-Concept doc moved to the Haufe Brain vault (source of truth):
+Project docs (source of truth) live in the Obsidian vault:
 
-`~/Development/haufe/Haufe Brain/Automatic-Brain/Projects/Vueflow-AI/concept.md`
+`~/Syncthing/Obsidian/Automatic-Brain/Projects/Vueflow-AI/` — `index.md` (overview, USPs, MCP knowledge) + `dashboard.md` (status, todos, reference IDs) + `concept.md` (original concept).
 
-This directory is reserved for the future code repo.
+This directory is the code repo.
