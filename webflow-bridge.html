@@ -1,0 +1,44 @@
+<!--
+  Vueflow AI bridge — install as page-level (or site-level) custom code.
+
+  Single inline JS block: dynamically injects Vue from CDN, then routes the
+  app bundle by environment:
+    - ?debug → local Vite dev server (HMR live on the Webflow page)
+    - *.webflow.io → staging bundle
+    - prod host  → prod bundle
+
+  Webflow MCP constraint: registered inline scripts must be raw JS (no <script>
+  tags, no external src tags). That's why Vue is injected via addScript() rather
+  than referenced as a separate <script src>.
+
+  Replace SITE_ID and the asset IDs after uploading a build to Webflow assets.
+-->
+<script>
+  function addScript(key, src, isModule, onload) {
+    const s = document.createElement('script');
+    s.setAttribute('type', isModule ? 'module' : 'text/javascript');
+    s.setAttribute('src', src);
+    if (onload) s.onload = onload;
+    document.body.appendChild(s);
+  }
+
+  const url = new URL(window.location);
+  const debug = url.searchParams.get('debug');
+
+  const VUE_CDN = 'https://unpkg.com/vue@3/dist/vue.global.js';
+  const STAGING_BUNDLE = 'https://cdn.prod.website-files.com/SITE_ID/STAGING_ASSET_ID_main.txt';
+  const PROD_BUNDLE = 'https://cdn.prod.website-files.com/SITE_ID/PROD_ASSET_ID_main.txt';
+
+  function loadBundle() {
+    if (debug !== null) {
+      addScript('client', 'https://localhost:3000/@vite/client', true);
+      addScript('main', 'https://localhost:3000/src/main.js', true);
+    } else if (url.host.match(/webflow\.io/)) {
+      addScript('main', STAGING_BUNDLE);
+    } else {
+      addScript('main', PROD_BUNDLE);
+    }
+  }
+
+  addScript('vue', VUE_CDN, false, loadBundle);
+</script>

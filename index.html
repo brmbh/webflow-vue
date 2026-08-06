@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Vueflow AI — local dev harness</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; }
+      section { border: 1px solid #ccc; border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+      .wf-zone { background: #f6f6f6; }
+    </style>
+  </head>
+  <body>
+    <!--
+      Simulated pure-Webflow region: NOT inside any island. If islands work
+      correctly, Vue never touches this — that's the whole point of the
+      island architecture (one big #app wrapper would rebuild this and break
+      Webflow's lightbox/slider runtime).
+    -->
+    <section class="wf-zone">
+      <h2>Pure Webflow zone (no Vue)</h2>
+      <p>Lightboxes, sliders, and interactions here stay untouched.</p>
+    </section>
+
+    <!--
+      Island 1: counter — writes to the shared store.
+      Contains a fake Webflow lightbox config + a <style> block so the
+      cleanDOMForVue() sweep has something real to rescue in dev.
+      Webflow Designer constraint: v-on:* / v-bind:* long form only.
+    -->
+    <section id="vf-counter">
+      <script type="application/json" class="w-json">{ "items": [{ "url": "fake-lightbox.jpg" }] }</script>
+      <style>.would-break-vue { color: red; }</style>
+      <h2>Counter island</h2>
+      <p>Shared count: {{ store.count }} · local clicks: {{ localClicks }}</p>
+      <button v-on:click="bump(1)" type="button">+1</button>
+      <button v-on:click="bump(-1)" type="button">−1</button>
+    </section>
+
+    <!--
+      Simulated Webflow CMS Collection List (hidden shell): every attr uses
+      the data-field-* prefix, including the grouping key.
+    -->
+    <div data-field-collection="courses" data-field-name="Vue 101" data-field-slug="vue-101"></div>
+    <div data-field-collection="courses" data-field-name="Webflow MCP Crash Course" data-field-slug="mcp-101"></div>
+    <div data-field-collection="courses" data-field-name="Hybrid Architecture" data-field-slug="hybrid"></div>
+
+    <!-- Island 3: CMS filter — reactive list from Webflow-rendered data -->
+    <section id="vf-cms">
+      <h2>CMS island</h2>
+      <input v-model="query" type="text" placeholder="Filter courses…" />
+      <ul>
+        <li v-for="course in courses" v-bind:key="course.slug">
+          {{ course.name }} — <code>{{ course.slug }}</code>
+        </li>
+      </ul>
+    </section>
+
+    <!-- another pure-Webflow region separating the islands -->
+    <section class="wf-zone"><p>More untouched Webflow content between islands…</p></section>
+
+    <!--
+      Island 2: status — far away from the counter in the DOM, reads the
+      same shared store. Clicking +1 up top updates this instantly.
+    -->
+    <section id="vf-status">
+      <h2>Status island</h2>
+      <p>Count: {{ store.count }} · doubled: {{ doubled }} · status: <strong>{{ status }}</strong></p>
+    </section>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
