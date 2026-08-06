@@ -11,7 +11,9 @@
   tags, no external src tags). That's why Vue is injected via addScript() rather
   than referenced as a separate <script src>.
 
-  Replace SITE_ID and the asset IDs after uploading a build to Webflow assets.
+  Replace SITE_ID and the asset IDs after uploading a build to Webflow assets:
+  Webflow assets reject .js, so upload dist/main.js renamed to bundle.txt — the
+  CDN serves it without X-Content-Type-Options, so classic <script src> executes it.
 -->
 <script>
   function addScript(key, src, isModule, onload) {
@@ -25,7 +27,10 @@
   const url = new URL(window.location);
   const debug = url.searchParams.get('debug');
 
-  const VUE_CDN = 'https://unpkg.com/vue@3/dist/vue.global.js';
+  // dev build (with warnings) in debug mode, prod build otherwise
+  const VUE_CDN = debug !== null
+    ? 'https://unpkg.com/vue@3/dist/vue.global.js'
+    : 'https://unpkg.com/vue@3/dist/vue.global.prod.js';
   const STAGING_BUNDLE = 'https://cdn.prod.website-files.com/SITE_ID/STAGING_ASSET_ID_main.txt';
   const PROD_BUNDLE = 'https://cdn.prod.website-files.com/SITE_ID/PROD_ASSET_ID_main.txt';
 
