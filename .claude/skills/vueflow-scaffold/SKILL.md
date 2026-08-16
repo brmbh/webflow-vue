@@ -2,7 +2,7 @@
 name: vueflow-scaffold
 description: Bootstrap or extend a Vue-on-Webflow hybrid mount on a target Webflow page. Installs the Vueflow bridge script via Webflow MCP, scaffolds reactive DOM and matching Vue code, and publishes with auto-reload of the local Vite dev server. Use when the user says "scaffold a Vue mount on Webflow", "set up Vueflow on this page", "add a Vue island to my Webflow page", "publish Vueflow changes", or "bootstrap the Vueflow bridge".
 license: MIT
-allowed-tools: Read Edit Bash mcp__webflow__webflow_guide_tool mcp__webflow__data_sites_tool mcp__webflow__data_pages_tool mcp__webflow__data_scripts_tool mcp__webflow__de_page_tool mcp__webflow__element_tool mcp__webflow__element_builder mcp__webflow__whtml_builder mcp__webflow__element_snapshot_tool
+allowed-tools: Read Edit Bash mcp__claude_ai_Webflow__webflow_guide_tool mcp__claude_ai_Webflow__data_sites_tool mcp__claude_ai_Webflow__data_pages_tool mcp__claude_ai_Webflow__data_scripts_tool mcp__claude_ai_Webflow__data_element_tool mcp__claude_ai_Webflow__data_element_builder mcp__claude_ai_Webflow__data_element_settings_tool mcp__claude_ai_Webflow__data_style_tool mcp__claude_ai_Webflow__data_assets_tool
 ---
 
 # Vueflow Scaffold
@@ -70,7 +70,7 @@ When adding a reactive variable + display:
    - Long-form Vue directives only: `v-on:click` (NOT `@click`), `v-bind:class` (NOT `:class`)
 3. Both edits are independent — run in parallel.
 
-Use `whtml_builder` only when pasting an existing HTML tree is genuinely simpler than describing it as element_builder children. WHTML rewrites some tags (notably `<button>` → `<a>`); element_builder with `type: "DOM"` does not.
+**Never use `whtml_builder` for markup that carries directives.** It silently drops every `v-*` attribute and `ref`. Classes, `data-*`, text and `{{ }}` survive, so the result looks correct and is inert. Use it only for inert layout, or not at all.
 
 ### Phase 5 — Publish + Auto-Reload
 
@@ -130,13 +130,56 @@ The `touch` is the trick that ties Webflow publishes to Vite HMR. Without it, th
 - Page-level scripts must reference site-registered scripts by ID; always register first
 
 ### DOM insert constraints
-- **Default to Custom Element** via `element_builder` `type: "DOM"` + `set_dom_config: { dom_tag: "..." }`. Universal building block, no native-element baggage.
-- `whtml_builder` requires a single root element AND rewrites `<button>` → Webflow Link (`<a>`). Click handlers still fire. Add `v-on:click.prevent` if unwanted navigation appears. Avoid WHTML for clean scaffolds — element_builder gives explicit control.
-- The Body element doesn't match a `tag: "body"` query filter — use `get_all_elements` to locate it
-- Long-form Vue directives only on Webflow-rendered DOM:
-  - `v-on:click` ✅, `@click` ❌
-  - `v-bind:class` ✅, `:class` ❌
-- `{{ interpolation }}` survives both element_builder `set_text` and the WHTML round-trip as text content
+
+**Rule 1 — anything carrying a directive must be a Custom Element, with its
+attributes set at creation.** `element_builder`, `type: "DOM"`,
+`set_dom_config: { dom_tag: "..." }`, `set_attributes` in the same call.
+
+A Custom Element stores `data.attributes` as a first-class array — that is the
+only mechanism that reliably survives publish. On native types (Link, Paragraph,
+Heading) arbitrary attributes are a bolt-on, and writing them afterwards with
+`set_attributes` fails intermittently and permanently with:
+
+```
+MPS rejected update: … [Conflict] The operation could not be applied to the component map
+```
+
+It does not clear on retry, cooldown, or re-query. Cause unknown; Rule 1 avoids
+it. Verified 2026-08-16, jan-blank-sandbox.
+
+**Rule 2 — long form only.** `v-on:click` ✅ `@click` ❌ · `v-bind:class` ✅ `:class` ❌
+
+**Rule 3 — `ref` does not work. Use `data-vf-ref`.** Webflow stores `ref="x"` in
+the Designer (`get_attributes` reads it back) and then strips it at publish, so
+it never reaches the page. True on Custom Elements too. `data-*` survives intact.
+Refs resolve **after** mount — Vue empties the mount target first, so anything
+captured beforehand is detached. Verified 2026-08-16.
+
+**Rule 4 — `{{ }}` survives on any element type.** It is text content, not an
+attribute. A plain Text Block can hold a mustache. Only *attributes* force
+Custom Element.
+
+**Rule 5 — the Body element** doesn't match a `tag: "body"` filter. Use
+`get_all_elements`.
+
+**Rule 6 — a code embed's scripts run at parse time.** An embed that mounts
+islands must sit **after** every one of them in the DOM, or `querySelector`
+returns null and the mount silently does nothing.
+
+**Rule 7 — CMS parsing happens before any mount**, and the Collection List shell
+stays **outside** every island. Vue empties its mount target, so a list inside an
+island becomes a render artifact of the thing meant to read it.
+
+**Rule 8 — styling is never Vueflow's.** `vf-` and `data-vf-` name Vueflow's own
+contract — mount ids, behavioural hooks. Presentation classes belong to the
+project's design system. Never invent `vf-card`-style classes.
+
+### CSS via the API
+- `whtml_builder`'s `css` param rejects nested and descendant selectors
+  (`.a .b`). Single-class selectors only — flatten, or create the style with
+  `data_style_tool`.
+- `data_style_tool > create_style` errors if the style already exists. Check
+  first, or reuse; never overwrite a shared global from another page.
 
 ### Publish + HMR
 - ALWAYS `touch src/main.js` immediately after `publish_site` returns success
@@ -144,6 +187,17 @@ The `touch` is the trick that ties Webflow publishes to Vite HMR. Without it, th
 - Only fires when this skill drives the publish — direct publishes from the Webflow Designer UI bypass the trigger
 
 ### Failure modes
+- Directives missing from the published page but present in the Designer → markup
+  was inserted with `whtml_builder`. Rebuild those elements as Custom Elements.
+- An island renders nothing and the console is silent → mount target existed but
+  `setup()` never supplied what the markup asks for. Check the markup ↔ bundle
+  contract before anything else.
+- An island renders nothing and no `[vueflow:*]` log appeared at all → the embed
+  or bundle ran before the markup existed. See Rule 6.
+- 404 on `add_page_script` for a freshly created page → the custom-code block
+  doesn't exist yet. Use `set_page_scripts` to create it.
+- `update_registered_script` 404s → re-register the same `displayName` with a
+  bumped version, then re-apply with `set_page_scripts`.
 - 4xx on `add_inline_site_script` → almost always the alphanumeric `displayName` rule
 - Designer tool returns "no element selected" or empty tree → Designer not open on the target page; ask user to switch
 - Vite dev server not running → tell user to `npm install && npm run dev`
