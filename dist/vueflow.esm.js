@@ -1,0 +1,409 @@
+import { createApp, reactive, watch, ref, shallowRef } from "vue";
+function cleanDOMForVue(rootEl, label = rootEl.id || "island") {
+  const rescued = [];
+  const dropped = [];
+  for (const node of rootEl.querySelectorAll('script.w-json, script[type="application/json"]')) {
+    rescued.push(node);
+    node.remove();
+  }
+  for (const node of rootEl.querySelectorAll("style")) {
+    dropped.push(node.textContent.slice(0, 60));
+    node.remove();
+  }
+  if (rescued.length || dropped.length) {
+    console.log(
+      `[vueflow:clean] "${label}" swept before mount — rescued ${rescued.length} w-json config(s), stripped ${dropped.length} <style> block(s)`,
+      { dropped }
+    );
+  } else {
+    console.log(`[vueflow:clean] "${label}" clean — no Webflow runtime nodes inside mount target`);
+  }
+  return {
+    rescuedCount: rescued.length,
+    /** Re-attach rescued config nodes after Vue has taken over the subtree. */
+    restore() {
+      for (const node of rescued) rootEl.appendChild(node);
+      if (rescued.length) {
+        console.log(`[vueflow:clean] "${label}" restored ${rescued.length} rescued node(s) post-mount`);
+      }
+    }
+  };
+}
+function mountIsland(selector, label, setup) {
+  const root = document.querySelector(selector);
+  if (!root) {
+    console.log(`[vueflow:island] "${label}" skipped — ${selector} not on this page`);
+    return null;
+  }
+  const t0 = performance.now();
+  const sweep = cleanDOMForVue(root, label);
+  const app = createApp({ setup });
+  app.config.errorHandler = (err, _vm, info) => console.error(`[vueflow:island] "${label}" runtime error (${info})`, err);
+  app.mount(root);
+  sweep.restore();
+  console.log(
+    `[vueflow:island] "${label}" mounted on ${selector} in ${(performance.now() - t0).toFixed(1)}ms`
+  );
+  return app;
+}
+const STORAGE_PREFIX = "vueflow:store:";
+const registry = /* @__PURE__ */ new Map();
+function hydrate(name) {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_PREFIX + name);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    console.log(`[vueflow:store] "${name}" hydrated from sessionStorage`, parsed);
+    return parsed;
+  } catch (err) {
+    console.warn(`[vueflow:store] "${name}" hydration failed — starting fresh`, err);
+    return null;
+  }
+}
+function useSharedStore(name = "default", initialState = {}, options = {}) {
+  const { persist = false } = options;
+  if (registry.has(name)) {
+    console.log(`[vueflow:store] "${name}" → existing instance reused (cross-island link established)`);
+    return registry.get(name);
+  }
+  const persisted = persist ? hydrate(name) : null;
+  const store = reactive({ ...initialState, ...persisted });
+  registry.set(name, store);
+  console.log(`[vueflow:store] "${name}" created`, JSON.parse(JSON.stringify(store)), { persist });
+  watch(
+    store,
+    (state) => {
+      const snapshot = JSON.parse(JSON.stringify(state));
+      console.log(`[vueflow:store] "${name}" mutated →`, snapshot);
+      if (!persist) return;
+      try {
+        sessionStorage.setItem(STORAGE_PREFIX + name, JSON.stringify(snapshot));
+      } catch (err) {
+        console.warn(`[vueflow:store] "${name}" persist failed`, err);
+      }
+    },
+    { deep: true }
+  );
+  return store;
+}
+function resetSharedStore(name = "default") {
+  sessionStorage.removeItem(STORAGE_PREFIX + name);
+  console.log(`[vueflow:store] "${name}" sessionStorage cleared — reload to re-init`);
+}
+const FIELD_PREFIX = "field";
+const GROUP_KEY = "collection";
+const GROUP_CLASS_PREFIX = "vf-c-";
+const FIELD_CLASS_PREFIX = "vf-f-";
+const GROUP_SELECTOR = `[data-field-collection],[class*="${GROUP_CLASS_PREFIX}"]`;
+const FIELD_SELECTOR = `[data-field],[class*="${FIELD_CLASS_PREFIX}"]`;
+function markerFrom(el, prefix) {
+  for (const cls of el.classList) {
+    if (cls.startsWith(prefix) && cls.length > prefix.length) return cls.slice(prefix.length);
+  }
+  return null;
+}
+function groupNameOf(el) {
+  return el.dataset.fieldCollection || markerFrom(el, GROUP_CLASS_PREFIX);
+}
+function fieldNameOf(el) {
+  return el.dataset.field || markerFrom(el, FIELD_CLASS_PREFIX);
+}
+function isGroup(el) {
+  return groupNameOf(el) != null;
+}
+function stripFieldPrefix(datasetKey) {
+  if (!datasetKey.startsWith(FIELD_PREFIX) || datasetKey.length === FIELD_PREFIX.length) {
+    return null;
+  }
+  const rest = datasetKey.slice(FIELD_PREFIX.length);
+  return rest.charAt(0).toLowerCase() + rest.slice(1);
+}
+function kebabToCamel(s) {
+  return s.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+}
+function closestGroup(el) {
+  for (let node = el; node; node = node.parentElement) {
+    if (node.matches(GROUP_SELECTOR) && isGroup(node)) return node;
+  }
+  return null;
+}
+function childGroups(el) {
+  return [...el.querySelectorAll(GROUP_SELECTOR)].filter(
+    (candidate) => isGroup(candidate) && closestGroup(candidate.parentElement) === el
+  );
+}
+function ownFieldElements(el) {
+  return [...el.querySelectorAll(FIELD_SELECTOR)].filter(
+    (fieldEl) => fieldNameOf(fieldEl) != null && closestGroup(fieldEl) === el
+  );
+}
+function parseEntry(el, extractors2) {
+  const entry = {};
+  for (const [key, value] of Object.entries(el.dataset)) {
+    const fieldKey = stripFieldPrefix(key);
+    if (fieldKey) entry[fieldKey] = value;
+  }
+  const groupName = groupNameOf(el);
+  if (groupName) entry[GROUP_KEY] = groupName;
+  const elementsByKey = /* @__PURE__ */ new Map();
+  for (const fieldEl of ownFieldElements(el)) {
+    const key = kebabToCamel(fieldNameOf(fieldEl));
+    if (!elementsByKey.has(key)) elementsByKey.set(key, fieldEl);
+    entry[key] = fieldEl.textContent.trim();
+  }
+  for (const [key, extract] of Object.entries(extractors2)) {
+    const element = elementsByKey.get(key) ?? null;
+    entry[key] = extract({ raw: entry[key], element, item: el, key });
+  }
+  for (const groupEl of childGroups(el)) {
+    const nested = parseEntry(groupEl, extractors2);
+    const group = nested[GROUP_KEY];
+    if (!group) continue;
+    const key = kebabToCamel(group);
+    (entry[key] || (entry[key] = [])).push(nested);
+  }
+  return entry;
+}
+function useWebflowCMS({ selector = GROUP_SELECTOR, extractors: extractors2 = {}, root = document } = {}) {
+  var _a;
+  const collections = ref({});
+  const all = [...root.querySelectorAll(selector)];
+  const roots = all.filter((el) => isGroup(el) && closestGroup(el.parentElement) == null);
+  for (const el of roots) {
+    const entry = parseEntry(el, extractors2);
+    const group = entry[GROUP_KEY];
+    if (!group) continue;
+    const key = kebabToCamel(group);
+    ((_a = collections.value)[key] || (_a[key] = [])).push(entry);
+  }
+  console.log(
+    `[vueflow:cms] parsed ${roots.length} item element(s)` + (all.length !== roots.length ? ` (+${all.length - roots.length} nested)` : "") + " into collections:",
+    Object.fromEntries(Object.entries(collections.value).map(([k, v]) => [k, v.length]))
+  );
+  return { collections };
+}
+function parseItemElement(el, extractors2 = {}) {
+  const group = el.matches(GROUP_SELECTOR) && isGroup(el) ? el : [...el.querySelectorAll(GROUP_SELECTOR)].find(isGroup);
+  return group ? parseEntry(group, extractors2) : null;
+}
+const inFlight = /* @__PURE__ */ new Map();
+const documents = /* @__PURE__ */ new Map();
+function clearCollectionCache() {
+  inFlight.clear();
+  documents.clear();
+}
+async function loadDocument(url, { signal } = {}) {
+  if (documents.has(url)) return documents.get(url);
+  if (inFlight.has(url)) return inFlight.get(url);
+  const promise = fetch(url, { signal, headers: { Accept: "text/html" } }).then((response) => {
+    if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
+    return response.text();
+  }).then((html) => {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    documents.set(url, doc);
+    inFlight.delete(url);
+    return doc;
+  }).catch((error) => {
+    inFlight.delete(url);
+    throw error;
+  });
+  inFlight.set(url, promise);
+  return promise;
+}
+function fetchCollection(url, { parse, signal } = {}) {
+  const entries = shallowRef([]);
+  const pending = ref(false);
+  const error = ref(null);
+  const load = async () => {
+    pending.value = true;
+    error.value = null;
+    try {
+      const doc = await loadDocument(url, { signal });
+      entries.value = parse ? parse(doc) : [];
+      console.log(
+        `[vueflow:fetch] ${url} → ${entries.value.length} entr${entries.value.length === 1 ? "y" : "ies"}` + (documents.has(url) ? " (cached after first hit)" : "")
+      );
+    } catch (err) {
+      error.value = err;
+      console.error(`[vueflow:fetch] ${url} failed`, err);
+    } finally {
+      pending.value = false;
+    }
+  };
+  return { entries, pending, error, load };
+}
+const PAGE_LINK = ".w-pagination-next, .w-pagination-previous";
+const LIST_WRAPPER = ".w-dyn-list";
+function parseToken(href) {
+  const match = /([0-9a-f]{8})_page=(\d+)/.exec(href || "");
+  return match ? { token: match[1], page: Number(match[2]) } : null;
+}
+function paginationLinkFor(root, token) {
+  var _a;
+  for (const link of root.querySelectorAll(PAGE_LINK)) {
+    if (((_a = parseToken(link.getAttribute("href"))) == null ? void 0 : _a.token) === token) return link;
+  }
+  return null;
+}
+function nextLinkFor(root, token) {
+  var _a;
+  for (const link of root.querySelectorAll(".w-pagination-next")) {
+    if (((_a = parseToken(link.getAttribute("href"))) == null ? void 0 : _a.token) === token) return link;
+  }
+  return null;
+}
+function tokensIn(root) {
+  const tokens = /* @__PURE__ */ new Set();
+  for (const link of root.querySelectorAll(PAGE_LINK)) {
+    const parsed = parseToken(link.getAttribute("href"));
+    if (parsed) tokens.add(parsed.token);
+  }
+  return [...tokens];
+}
+async function loadAllPages(collections, { extractors: extractors2 = {}, root = document, maxPages = 50 } = {}) {
+  const tokens = tokensIn(root);
+  if (!tokens.length) {
+    console.log("[vueflow:pages] no pagination on this page — nothing to walk");
+    return { pagesFetched: 0, added: {} };
+  }
+  const merged = { ...collections.value };
+  const added = {};
+  let pagesFetched = 0;
+  for (const token of tokens) {
+    let current = root;
+    for (let guard = 0; guard < maxPages; guard += 1) {
+      const next = nextLinkFor(current, token);
+      if (!next) break;
+      const href = next.getAttribute("href");
+      const doc = await loadDocument(new URL(href, window.location.href).href);
+      pagesFetched += 1;
+      const anchor = paginationLinkFor(doc, token);
+      const scope = (anchor == null ? void 0 : anchor.closest(LIST_WRAPPER)) ?? doc;
+      const { collections: page } = useWebflowCMS({ root: scope, extractors: extractors2 });
+      for (const [group, entries] of Object.entries(page.value)) {
+        merged[group] = [...merged[group] ?? [], ...entries];
+        added[group] = (added[group] ?? 0) + entries.length;
+      }
+      current = doc;
+    }
+  }
+  collections.value = merged;
+  console.log(
+    `[vueflow:pages] walked ${pagesFetched} page(s), added`,
+    added,
+    "→ totals",
+    Object.fromEntries(Object.entries(merged).map(([k, v]) => [k, v.length]))
+  );
+  return { pagesFetched, added };
+}
+const DEFAULT_TIMEOUT = 15e3;
+function hasFinsweetList(root = document) {
+  return root.querySelector("[fs-list-element]") != null;
+}
+function awaitInstances(timeout) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`Finsweet list did not initialise within ${timeout}ms`)),
+      timeout
+    );
+    window.FinsweetAttributes || (window.FinsweetAttributes = []);
+    window.FinsweetAttributes.push([
+      "list",
+      (instances) => {
+        clearTimeout(timer);
+        resolve(instances ?? []);
+      }
+    ]);
+  });
+}
+function useFinsweetList({ instance, extractors: extractors2 = {}, timeout = DEFAULT_TIMEOUT } = {}) {
+  const entries = shallowRef([]);
+  const pending = ref(true);
+  const error = ref(null);
+  const read = (list2) => {
+    entries.value = list2.items.value.map((item) => parseItemElement(item.element, extractors2)).filter(Boolean);
+  };
+  const ready = (async () => {
+    try {
+      const instances = await awaitInstances(timeout);
+      const list2 = (instance ? instances.find((l) => l.instance === instance) : instances[0]) ?? null;
+      if (!list2) throw new Error("no Finsweet list instance found");
+      await list2.loadingPaginatedItems;
+      read(list2);
+      list2.addHook("afterRender", () => {
+        read(list2);
+      });
+      console.log(
+        `[vueflow:finsweet] list "${list2.instance ?? "(default)"}" ready — ${entries.value.length} item(s) parsed`
+      );
+      return list2;
+    } catch (err) {
+      error.value = err;
+      console.error("[vueflow:finsweet] compose path failed", err);
+      return null;
+    } finally {
+      pending.value = false;
+    }
+  })();
+  return { entries, pending, error, ready };
+}
+function normalizeNumber(input) {
+  if (input == null) return void 0;
+  const cleaned = String(input).replace(/[^\d.,-]/g, "");
+  if (!cleaned) return void 0;
+  const lastComma = cleaned.lastIndexOf(",");
+  const lastDot = cleaned.lastIndexOf(".");
+  const decimalAt = Math.max(lastComma, lastDot);
+  let normalized;
+  if (decimalAt === -1) {
+    normalized = cleaned;
+  } else {
+    const intPart = cleaned.slice(0, decimalAt).replace(/[.,]/g, "");
+    const fracPart = cleaned.slice(decimalAt + 1).replace(/[.,]/g, "");
+    normalized = `${intPart}.${fracPart}`;
+  }
+  const value = Number.parseFloat(normalized);
+  return Number.isNaN(value) ? void 0 : value;
+}
+const number = () => ({ raw }) => normalizeNumber(raw);
+const bool = () => ({ raw, element }) => {
+  if (!element) return false;
+  const text = (raw ?? "").trim().toLowerCase();
+  return !["false", "no", "off", "0"].includes(text);
+};
+const list = (separator = ",") => ({ raw }) => (raw ?? "").split(separator).map((part) => part.trim()).filter(Boolean);
+const richText = (selector) => ({ element, item }) => {
+  const target = selector ? item.querySelector(selector) : element;
+  return target ? target.innerHTML.trim() : "";
+};
+const date = () => ({ raw }) => {
+  if (!raw) return void 0;
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? void 0 : parsed;
+};
+const extractors = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  bool,
+  date,
+  list,
+  normalizeNumber,
+  number,
+  richText
+}, Symbol.toStringTag, { value: "Module" }));
+const version = "0.0.1";
+export {
+  cleanDOMForVue,
+  clearCollectionCache,
+  extractors,
+  fetchCollection,
+  hasFinsweetList,
+  loadAllPages,
+  loadDocument,
+  mountIsland,
+  parseItemElement,
+  resetSharedStore,
+  useFinsweetList,
+  useSharedStore,
+  useWebflowCMS,
+  version
+};

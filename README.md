@@ -1,8 +1,57 @@
-# Vueflow AI
+# Vueflow
 
-White-label boilerplate for Vue-on-Webflow hybrid sites. Vue runtime from CDN, app code bundled with Vite, served via a debug-aware bridge script in Webflow custom code. Driven end-to-end by Claude + the Webflow MCP — bridge install, DOM scaffold, code edit, publish, and HMR auto-reload all from one chat session.
+Vue 3 islands on Webflow-rendered DOM. Webflow owns the markup and the styling;
+Vue owns the behaviour. No build step required, and no page-wide takeover — the
+rest of the page stays untouched Webflow, with its own runtime intact.
 
-**Project dashboard (single source of truth):** `~/Syncthing/Obsidian/Automatic-Brain/Projects/Vueflow-AI/dashboard.md`
+> **Status: `0.0.1`, unstable.** The API still moves. Pin a tag; expect
+> signatures to change before `0.1.0`.
+
+## Quick start — two script tags
+
+Paste into your Webflow page's **custom code (head)**:
+
+```html
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/brmbh/vueflow@v0.0.1/dist/vueflow.global.js"></script>
+```
+
+Give any element an id — that is your island. Then add an **embed placed after
+it** (a code embed's scripts run at parse time, so an embed above the island
+mounts nothing):
+
+```html
+<script>
+  const { ref, computed } = Vue
+  const { mountIsland } = Vueflow
+
+  mountIsland('#counter', 'counter', () => {
+    const cups = ref(1)
+    const grams = computed(() => cups.value * 18)
+    return { cups, grams }
+  })
+</script>
+```
+
+```html
+<!-- the island itself, built in the Designer -->
+<div id="counter">
+  <button v-on:click="cups++">+</button>
+  <span>{{ cups }} cups = {{ grams }} g</span>
+</div>
+```
+
+`vue.global.js` is required rather than the runtime-only build: an island's
+template *is* the live Webflow DOM, so the template compiler has to be present.
+
+### Agent skill
+
+```bash
+npx skills add brmbh/vueflow
+```
+
+Installs `vueflow-scaffold`, which drives the Webflow MCP to build islands for
+you — bridge install, DOM scaffold, matching Vue code, publish.
 
 ## Why islands
 
@@ -13,7 +62,9 @@ Wrapping a whole Webflow page in one Vue app breaks Webflow's runtime: Vue's com
 ```bash
 npm install
 npm run dev    # https://localhost:3000 — local dev harness with HMR
-npm run build  # dist/main.js — UMD bundle for Webflow asset upload
+npm run build      # dist/main.js — demo app bundle, for Webflow asset upload
+npm run build:lib  # dist/vueflow.global.js + .esm.js — the library
+npm test           # vitest + jsdom
 ```
 
 `mkcert` generates a trusted local cert on first run so the dev server can be loaded into HTTPS Webflow pages without mixed-content errors.

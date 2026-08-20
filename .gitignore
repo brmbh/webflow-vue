@@ -1,5 +1,9 @@
 node_modules/
-dist/
+# The demo app bundle stays out of git; the library build is committed so
+# jsDelivr can serve it straight from a GitHub tag.
+dist/*
+!dist/vueflow.global.js
+!dist/vueflow.esm.js
 *.local
 .DS_Store
 *.pem
