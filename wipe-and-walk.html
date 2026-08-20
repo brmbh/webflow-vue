@@ -1,0 +1,722 @@
+<title>Concepts Worth Stealing</title>
+
+<style>
+  :root {
+    --paper:    #F5F5F2;
+    --surface:  #FFFFFF;
+    --sunk:     #EDEDE9;
+    --ink:      #15171A;
+    --ink-2:    #5C626B;
+    --ink-3:    #878D96;
+    --rule:     #D5D6D2;
+    --rule-2:   #E4E4E0;
+
+    --blue:     #1B34C4;
+    --blue-sub: #E6E8FA;
+    --red:      #C1301B;
+    --red-sub:  #FAE6E2;
+    --amber:    #A97400;
+
+    --font-sans: "Helvetica Neue", Helvetica, "Arial Nova", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+    --measure: 66ch;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:    #101215;
+      --surface:  #191C20;
+      --sunk:     #1F2328;
+      --ink:      #ECEDEA;
+      --ink-2:    #969CA5;
+      --ink-3:    #6E757E;
+      --rule:     #2E333A;
+      --rule-2:   #23272C;
+      --blue:     #7E90FF;
+      --blue-sub: #1B2136;
+      --red:      #FF7358;
+      --red-sub:  #2E1C17;
+      --amber:    #E0A93B;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:    #101215;
+    --surface:  #191C20;
+    --sunk:     #1F2328;
+    --ink:      #ECEDEA;
+    --ink-2:    #969CA5;
+    --ink-3:    #6E757E;
+    --rule:     #2E333A;
+    --rule-2:   #23272C;
+    --blue:     #7E90FF;
+    --blue-sub: #1B2136;
+    --red:      #FF7358;
+    --red-sub:  #2E1C17;
+    --amber:    #E0A93B;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection { background: var(--blue); color: var(--paper); }
+
+  a { color: inherit; text-decoration-color: var(--ink-3); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: var(--blue); color: var(--blue); }
+  a:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 2px; }
+
+  .wrap { max-width: 1180px; margin-inline: auto; padding-inline: clamp(20px, 5vw, 72px); }
+
+  .row {
+    display: grid;
+    grid-template-columns: 132px minmax(0, 1fr);
+    gap: clamp(20px, 4vw, 56px);
+    align-items: start;
+  }
+
+  .rail {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    line-height: 1.5;
+    padding-top: 8px;
+  }
+  .rail b { display: block; color: var(--ink); font-weight: 500; }
+  .rail .no {
+    display: block;
+    font-size: 26px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 8px;
+    color: var(--blue);
+  }
+  .rail.skip .no { color: var(--ink-3); }
+
+  section { border-top: 1px solid var(--rule); padding-block: clamp(44px, 6vw, 80px); }
+
+  .prose { max-width: var(--measure); }
+
+  h2 {
+    font-size: clamp(26px, 3.2vw, 38px);
+    line-height: 1.12;
+    letter-spacing: -0.026em;
+    font-weight: 700;
+    margin: 0 0 22px;
+    text-wrap: balance;
+  }
+
+  h3 {
+    font-size: 18px;
+    line-height: 1.3;
+    letter-spacing: -0.012em;
+    font-weight: 700;
+    margin: 34px 0 10px;
+    text-wrap: balance;
+  }
+
+  p { margin: 0 0 18px; }
+  p.lead {
+    font-size: clamp(19px, 2vw, 22px);
+    line-height: 1.45;
+    letter-spacing: -0.012em;
+    color: var(--ink);
+  }
+  .muted { color: var(--ink-2); }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+    background: var(--sunk);
+    padding: 0.12em 0.36em;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+
+  strong { font-weight: 700; }
+
+  /* ---------- masthead ---------- */
+  .masthead { padding-block: clamp(44px, 7vw, 92px) 0; }
+
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 clamp(24px, 4vw, 40px);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+  }
+
+  h1 {
+    font-size: clamp(32px, 5.6vw, 66px);
+    line-height: 1.03;
+    letter-spacing: -0.034em;
+    font-weight: 700;
+    margin: 0;
+    max-width: 17ch;
+  }
+  h1 em { font-style: normal; color: var(--ink-3); }
+
+  .dek {
+    max-width: 58ch;
+    margin: 28px 0 0;
+    font-size: clamp(18px, 2vw, 21px);
+    line-height: 1.45;
+    letter-spacing: -0.01em;
+    color: var(--ink-2);
+  }
+  .dek code { background: none; padding: 0; color: var(--ink); }
+
+  /* ---------- inventory table ---------- */
+  .table-scroll { overflow-x: auto; margin-top: 32px; border: 1px solid var(--rule); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 660px; font-size: 15px; }
+  th, td { text-align: left; padding: 14px 18px; vertical-align: top; border-bottom: 1px solid var(--rule-2); }
+  thead th {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 400;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.idx { font-family: var(--font-mono); color: var(--ink-3); width: 34px; }
+  .tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border: 1px solid currentColor;
+    border-radius: 2px;
+    white-space: nowrap;
+    display: inline-block;
+  }
+  .tag.adopt { color: var(--blue); }
+  .tag.maybe { color: var(--amber); }
+  .tag.skip  { color: var(--ink-3); }
+  .tag.cant  { color: var(--red); }
+
+  /* ---------- figures ---------- */
+  figure { margin: 34px 0 0; border: 1px solid var(--rule); background: var(--surface); }
+  .fig-scroll { overflow-x: auto; padding: clamp(16px, 3vw, 30px); }
+  figure svg { display: block; width: 100%; min-width: 620px; height: auto; }
+  figcaption { border-top: 1px solid var(--rule); padding: 14px 18px; font-size: 14px; line-height: 1.5; color: var(--ink-2); }
+  figcaption b { color: var(--ink); font-weight: 700; }
+
+  .s-box   { fill: var(--surface); stroke: var(--rule); stroke-width: 1.5; }
+  .s-sunk  { fill: var(--sunk);    stroke: var(--rule); stroke-width: 1.5; }
+  .s-red   { fill: var(--red-sub); stroke: var(--red);  stroke-width: 1.5; }
+  .s-blue  { fill: var(--blue-sub);stroke: var(--blue); stroke-width: 1.5; }
+  .s-line  { stroke: var(--ink-3); stroke-width: 1.5; fill: none; }
+  .s-line-red  { stroke: var(--red);  stroke-width: 2; fill: none; }
+  .s-line-blue { stroke: var(--blue); stroke-width: 2; fill: none; }
+  .s-rule  { stroke: var(--rule); stroke-width: 1; }
+
+  .t-sm   { font-family: var(--font-mono); font-size: 11px; fill: var(--ink-2); letter-spacing: 0.03em; }
+  .t-lbl  { font-family: var(--font-mono); font-size: 10.5px; fill: var(--ink-3); letter-spacing: 0.11em; }
+  .t-head { font-family: var(--font-sans); font-size: 14px; font-weight: 700; fill: var(--ink); letter-spacing: -0.01em; }
+  .t-red  { fill: var(--red); }
+  .t-blue { fill: var(--blue); }
+
+  .m-ink  { fill: var(--ink-3); }
+  .m-red  { fill: var(--red); }
+  .m-blue { fill: var(--blue); }
+
+  /* ---------- code pair ---------- */
+  .codepair { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); margin-top: 28px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+  .codepair > div { background: var(--surface); display: flex; flex-direction: column; }
+  .cp-head {
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--rule);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .cp-head b { color: var(--ink); font-weight: 500; }
+  .codepair pre {
+    margin: 0;
+    padding: 18px;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.75;
+    color: var(--ink-2);
+    flex: 1;
+  }
+  .codepair pre .cm { color: var(--ink-3); }
+  .codepair pre .key { color: var(--ink); }
+  .codepair pre .add { color: var(--blue); font-weight: 700; }
+  .codepair pre .del { color: var(--red); }
+  .cp-foot { border-top: 1px solid var(--rule); padding: 12px 18px; font-size: 13.5px; color: var(--ink-2); }
+  .cp-foot b { color: var(--ink); }
+
+  /* ---------- callout ---------- */
+  .callout {
+    margin-top: 32px;
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--amber);
+    background: var(--surface);
+    padding: 22px 26px;
+  }
+  .callout .vtag {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--amber);
+    display: block;
+    margin-bottom: 8px;
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout.red { border-left-color: var(--red); }
+  .callout.red .vtag { color: var(--red); }
+  .callout.blue { border-left-color: var(--blue); }
+  .callout.blue .vtag { color: var(--blue); }
+
+  footer { border-top: 1px solid var(--rule); padding-block: 46px 72px; }
+  .srcs { list-style: none; margin: 14px 0 0; padding: 0; font-family: var(--font-mono); font-size: 13px; line-height: 2; color: var(--ink-2); }
+
+  @media (max-width: 720px) {
+    .row { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+    .rail { padding-top: 0; }
+    .rail .no { display: inline; font-size: 13px; margin-right: 8px; }
+    .rail b { display: inline; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<!-- ============================ MASTHEAD ============================ -->
+<header class="masthead">
+  <div class="wrap">
+    <p class="kicker">
+      <span>Concept note</span>
+      <span>Vueflow&nbsp;AI</span>
+      <span>16 Aug 2026</span>
+    </p>
+    <h1>Eight ideas in petite-vue.<br><em>Three change how</em><br>Vueflow works.</h1>
+    <p class="dek">
+      Not whether to use it — we're not. What it does differently that our hybrid should copy.
+      Every concept below is portable to the Vue&nbsp;3 setup we already run, with no new
+      dependency and no runtime swap.
+    </p>
+  </div>
+</header>
+
+<!-- ============================ INVENTORY ============================ -->
+<section>
+  <div class="wrap row">
+    <div class="rail"><b>Inventory</b>Every design decision, judged</div>
+    <div>
+      <h2>The eight concepts, and which ones survive contact with our setup.</h2>
+      <div class="prose">
+        <p class="lead">
+          Read straight out of the source, not the README. Three are worth building, two are
+          judgement calls, three are not for us.
+        </p>
+      </div>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col"></th>
+              <th scope="col">Concept</th>
+              <th scope="col">What it would change for us</th>
+              <th scope="col">Verdict</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="idx">01</td>
+              <td><strong>Boundaries in the markup</strong><br><span class="muted">islands declared where they live</span></td>
+              <td>New island ships without touching the bundle</td>
+              <td><span class="tag adopt">Adopt</span></td>
+            </tr>
+            <tr>
+              <td class="idx">02</td>
+              <td><strong>Mount is a discovery pass</strong><br><span class="muted">one app, N roots, one shared scope</span></td>
+              <td>Deletes the mount manifest in <code>main.js</code> entirely</td>
+              <td><span class="tag adopt">Adopt</span></td>
+            </tr>
+            <tr>
+              <td class="idx">03</td>
+              <td><strong>Elements named in markup</strong><br><span class="muted"><code>ref="cartCount"</code> → <code>$refs</code></span></td>
+              <td>No more CSS selectors hardcoded in island setup code</td>
+              <td><span class="tag adopt">Adopt</span></td>
+            </tr>
+            <tr>
+              <td class="idx">04</td>
+              <td><strong>Lifecycle in the markup</strong><br><span class="muted"><code>v-on:vue:mounted</code></span></td>
+              <td>Designer can wire GSAP / IX2 re-init per element</td>
+              <td><span class="tag maybe">Maybe</span></td>
+            </tr>
+            <tr>
+              <td class="idx">05</td>
+              <td><strong>No-build as a real mode</strong><br><span class="muted">CDN only, zero tooling</span></td>
+              <td>A second Vueflow tier for simple islands — a pitch decision</td>
+              <td><span class="tag maybe">Maybe</span></td>
+            </tr>
+            <tr>
+              <td class="idx">06</td>
+              <td><strong>Directives are consumed</strong><br><span class="muted"><code>getAttribute</code> then <code>removeAttribute</code></span></td>
+              <td>Mounting becomes idempotent; live DOM stays clean</td>
+              <td><span class="tag skip">Hygiene</span></td>
+            </tr>
+            <tr>
+              <td class="idx">07</td>
+              <td><strong>Scope inheritance</strong><br><span class="muted"><code>Object.create(parent)</code> + write-through</span></td>
+              <td>Less typing; harder to see what state an island touches</td>
+              <td><span class="tag skip">Skip</span></td>
+            </tr>
+            <tr>
+              <td class="idx">08</td>
+              <td><strong>Per-expression failure isolation</strong><br><span class="muted">try/catch around every binding</span></td>
+              <td>Nothing — Vue can't do it. But it changes our strategy</td>
+              <td><span class="tag cant">Can't have</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ THE UNIFYING MOVE ============================ -->
+<section>
+  <div class="wrap row">
+    <div class="rail"><b>The move</b>Why 01, 02 and 03 are one idea</div>
+    <div>
+      <h2>Three concepts, one move: push the coupling point into the markup.</h2>
+      <div class="prose">
+        <p class="lead">
+          Every one of them takes something currently written in the bundle and writes it next to
+          the thing it describes instead.
+        </p>
+        <p>
+          Right now three separate contracts bind our two halves together, and all three are
+          maintained twice — once in <code>src/</code>, once in the Designer, by different acts,
+          with no mechanism forcing agreement. That is the shape of the 2026-08-11 failure:
+          the markup called helpers the bundle didn't expose, and nothing said so until the
+          configurator rendered empty.
+        </p>
+      </div>
+
+      <figure>
+        <div class="fig-scroll">
+          <svg viewBox="0 0 940 356" role="img" aria-label="Three coupling points — island selectors, element selectors and mount order — currently live in the bundle and must be matched by hand in the Webflow Designer. The proposed move relocates all three into the markup, leaving the bundle with behaviour only.">
+            <defs>
+              <marker id="u-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" class="m-red"/>
+              </marker>
+              <marker id="u-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" class="m-blue"/>
+              </marker>
+            </defs>
+
+            <!-- TODAY -->
+            <text x="20" y="16" class="t-lbl">TODAY — THREE CONTRACTS, EACH MAINTAINED TWICE</text>
+            <line x1="20" y1="26" x2="444" y2="26" class="s-rule"/>
+
+            <rect x="20" y="44" width="424" height="112" rx="2" class="s-box"/>
+            <text x="38" y="68" class="t-head">bundle · src/main.js</text>
+            <text x="38" y="92" class="t-sm">mountIsland('#vf-cart', …)</text>
+            <text x="38" y="112" class="t-sm">document.querySelector('.count')</text>
+            <text x="38" y="132" class="t-sm">mount order, hardcoded</text>
+
+            <line x1="128" y1="156" x2="128" y2="212" class="s-line-red" marker-end="url(#u-red)"/>
+            <line x1="232" y1="156" x2="232" y2="212" class="s-line-red" marker-end="url(#u-red)"/>
+            <line x1="336" y1="156" x2="336" y2="212" class="s-line-red" marker-end="url(#u-red)"/>
+            <text x="232" y="192" class="t-sm t-red" text-anchor="middle">matched by hand</text>
+
+            <rect x="20" y="216" width="424" height="88" rx="2" class="s-box"/>
+            <text x="38" y="240" class="t-head">Webflow Designer</text>
+            <text x="38" y="264" class="t-sm">id="vf-cart" · class="count"</text>
+            <text x="38" y="284" class="t-sm">markup the bundle assumes exists</text>
+
+            <text x="20" y="336" class="t-sm t-red">drift is silent until a section renders empty</text>
+
+            <!-- PROPOSED -->
+            <text x="496" y="16" class="t-lbl">PROPOSED — ONE SOURCE, NO MATCHING</text>
+            <line x1="496" y1="26" x2="920" y2="26" class="s-rule"/>
+
+            <rect x="496" y="44" width="424" height="112" rx="2" class="s-blue"/>
+            <text x="514" y="68" class="t-head">Webflow Designer — owns all three</text>
+            <text x="514" y="92" class="t-sm">data-vf-scope="{ open: false }"</text>
+            <text x="514" y="112" class="t-sm">data-vf-ref="count"</text>
+            <text x="514" y="132" class="t-sm">boundaries discovered, not declared</text>
+
+            <line x1="708" y1="156" x2="708" y2="212" class="s-line-blue" marker-end="url(#u-blue)"/>
+            <text x="720" y="190" class="t-sm t-blue">swept at boot</text>
+
+            <rect x="496" y="216" width="424" height="88" rx="2" class="s-box"/>
+            <text x="514" y="240" class="t-head">bundle · behaviour only</text>
+            <text x="514" y="264" class="t-sm">createApp / setup logic</text>
+            <text x="514" y="284" class="t-sm">no selectors, no manifest</text>
+
+            <text x="496" y="336" class="t-sm t-blue">nothing to keep in sync — there is only one copy</text>
+          </svg>
+        </div>
+        <figcaption>
+          <b>The concept, stated once.</b> The bundle should own behaviour and nothing else. Every
+          fact about <em>where</em> behaviour attaches belongs in the layer that already owns the
+          markup.
+        </figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 01 + 02 ============================ -->
+<section>
+  <div class="wrap row">
+    <div class="rail"><span class="no">01</span><b>+ 02</b>Boundaries &amp; discovery</div>
+    <div>
+      <h2>Delete the mount manifest.</h2>
+      <div class="prose">
+        <p>
+          petite-vue's <code>mount()</code> sweeps for <code>[v-scope]</code>, drops any nested
+          inside another, and mounts each match as a root — all sharing one context. The list of
+          islands is not written anywhere. It is <em>found</em>.
+        </p>
+        <p>
+          We already mount one app per island, so the sweep is the only missing piece. Same
+          architecture, one less thing to keep in sync.
+        </p>
+      </div>
+
+      <div class="codepair">
+        <div>
+          <div class="cp-head">Now — <b>a manifest that must be maintained</b></div>
+<pre><span class="cm">// src/main.js — grows with every island</span>
+mountIsland(<span class="del">'#vf-counter'</span>, 'counter', setup)
+mountIsland(<span class="del">'#vf-status'</span>,  'status',  setup)
+mountIsland(<span class="del">'#vf-cms'</span>,     'cms',     setup)
+mountIsland(<span class="del">'#vf-cart'</span>,    'cart',    setup)</pre>
+          <p class="cp-foot">Add an island → <b>edit, rebuild, reupload, bump bridge, republish</b></p>
+        </div>
+        <div>
+          <div class="cp-head">Concept applied — <b>a sweep that never changes</b></div>
+<pre><span class="cm">// src/mountScopes.js — ~30 lines, written once</span>
+<span class="key">export function</span> mountScopes(store) {
+  <span class="key">const</span> roots = [...document
+    .querySelectorAll(<span class="add">'[data-vf-scope]'</span>)]
+    .filter(el =&gt; !el.parentElement
+      ?.closest(<span class="add">'[data-vf-scope]'</span>));
+
+  <span class="key">for</span> (<span class="key">const</span> el <span class="key">of</span> roots) {
+    <span class="key">const</span> local = <span class="key">new</span> Function(
+      <span class="key">`return (${</span>el.dataset.vfScope || '{}'<span class="key">})`</span>
+    )();
+    createApp({ setup: () =&gt;
+      ({ ...store, ...reactive(local) })
+    }).mount(el);
+  }
+}</pre>
+          <p class="cp-foot">Add an island → <b>Designer only</b></p>
+        </div>
+      </div>
+
+      <div class="callout red">
+        <span class="vtag">What this costs — not hidden</span>
+        <p>
+          Each scope is still its own Vue app, so Vue's mount still rebuilds that subtree — keep
+          scopes small, and keep sliders and lightboxes outside them. Child scopes can't read a
+          parent's locals the way petite-vue's prototype chain allows, so shared state still goes
+          through the store. And <code>new Function()</code> runs a Designer-authored string: fine
+          on our own sites, never over user-generated content.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 03 ============================ -->
+<section>
+  <div class="wrap row">
+    <div class="rail"><span class="no">03</span><b>Named elements</b>Refs instead of selectors</div>
+    <div>
+      <h2>The markup should name its own parts.</h2>
+      <div class="prose">
+        <p>
+          In petite-vue, a plain <code>ref="cartCount"</code> attribute registers the element in
+          <code>$refs</code>. No selector, no class dependency, no coupling to a class name the
+          designer is free to rename during a restyle.
+        </p>
+        <p>
+          This is the cheapest of the three and it removes a real category of breakage: right now a
+          class rename in the Designer can silently break bundle code that queried it. Vue 3
+          supports <code>ref</code> in in-DOM templates already — we simply aren't using it, and a
+          <code>data-vf-ref</code> sweep in the same pass as 01 covers the rest.
+        </p>
+        <p class="muted">
+          Worth pairing with concept 06: petite-vue removes each directive attribute once it has
+          been processed, so the live DOM stays clean and a second mount is a no-op. Cheap
+          hygiene, and it makes re-mounting after a Webflow re-render safe.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 04 + 05 ============================ -->
+<section>
+  <div class="wrap row">
+    <div class="rail"><span class="no">04</span><b>+ 05</b>The judgement calls</div>
+    <div>
+      <h2>Two that depend on what Vueflow is for.</h2>
+
+      <h3>04 · Lifecycle declared in the markup</h3>
+      <div class="prose">
+        <p>
+          <code>v-on:vue:mounted="…"</code> lets an element say "when I appear, run this." For a
+          setup where you're constantly re-initialising GSAP and IX2 around mounted regions, a
+          <code>data-vf-on-mount</code> hook means that wiring lives on the element it animates
+          rather than in a lifecycle block that has to re-find it.
+        </p>
+        <p>
+          Adopt it if the animation wiring is the part that keeps breaking. Skip it if
+          <code>onMounted</code> in the island's setup is already where you'd look.
+        </p>
+      </div>
+
+      <h3>05 · No-build as a first-class mode</h3>
+      <div class="prose">
+        <p>
+          petite-vue's default story is a CDN tag and an attribute — no Vite, no bundle, no
+          upload. That isn't a technical concept so much as a product one, and it maps onto a
+          real tension in Vueflow: Brew Lab is too advanced to demo, which is why the 17-line
+          <code>hello.js</code> exists.
+        </p>
+        <p>
+          Concepts 01 and 03 make a genuine <strong>no-bundle tier</strong> possible — Vue from
+          CDN, one generic sweep script, all behaviour declared in attributes. Simple islands
+          (toggles, filters, counters) ship with zero infrastructure; complex ones
+          (configurator, cart, CMS parsing) keep the bundle. That's a two-tier concept worth
+          deciding on deliberately rather than drifting into.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 07 + 08 ============================ -->
+<section>
+  <div class="wrap row">
+    <div class="rail skip"><span class="no">07</span><b>+ 08</b>What not to copy</div>
+    <div>
+      <h2>Two concepts we should consciously not take.</h2>
+
+      <h3>07 · Scope inheritance</h3>
+      <div class="prose">
+        <p>
+          <code>createScopedContext</code> builds a child scope as
+          <code>Object.create(parentScope)</code> wrapped in a Proxy whose <code>set</code> trap
+          forwards writes of unknown keys up to the parent. Elegant — child scopes read parent
+          state transparently, writes fall through unless the child owns the key.
+        </p>
+        <p>
+          Our registry is flat: every island names its store explicitly. That is more typing and
+          it is the better trade for us. Given a failure mode where a section silently blanked,
+          <strong>being able to see which state an island touches beats not having to type it.</strong>
+        </p>
+      </div>
+
+      <h3>08 · Per-expression failure isolation</h3>
+      <div class="prose">
+        <p>
+          petite-vue try/catches every individual expression, so a broken binding kills one binding
+          and the section still renders. Vue's render function is monolithic — one bad expression
+          blanks everything.
+        </p>
+        <p>
+          I want to be exact here, because I got this wrong earlier: <strong>this cannot be
+          retrofitted.</strong> The <code>guardTemplateApi</code> Proxy can't match it. petite-vue
+          catches around the whole expression, so a missing helper yields <code>undefined</code>;
+          to do the same we'd need a value that is both callable and falsy, and JavaScript has
+          exactly one of those and it is not available to us. The documented "missing value takes
+          the wrong branch" limitation is forced, not an oversight.
+        </p>
+      </div>
+
+      <div class="callout blue">
+        <span class="vtag">So the concept-level lesson inverts</span>
+        <p>
+          Because Vue <em>cannot</em> degrade gracefully, prevention is the only lever we have.
+          <code>npm run check:dom-contract</code> should be a hard pre-deploy gate, not an optional
+          script someone remembers to run. petite-vue can afford a loose markup contract; we
+          structurally cannot, so ours has to be enforced instead.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ NEXT ============================ -->
+<section>
+  <div class="wrap row">
+    <div class="rail"><b>Next</b>The smallest honest test</div>
+    <div>
+      <h2>One toggle, shipped without rebuilding the bundle.</h2>
+      <div class="prose">
+        <p class="lead">
+          Add a "tasting notes" toggle to a Brew Lab bean card using only
+          <code>data-vf-scope</code> and <code>v-on:click</code> — against a bundle that has never
+          heard of it.
+        </p>
+        <p>
+          That is concepts 01, 02 and 03 in a single gesture. If it lands, the mount manifest goes
+          away and the no-bundle tier becomes real. If it feels like a party trick, we've spent an
+          afternoon and we know.
+        </p>
+      </div>
+      <div class="callout">
+        <span class="vtag">One footnote, unrelated to any of this</span>
+        <p>
+          Found while reading: FJC ships <code>vue.global.js</code> — the 131.6&nbsp;KB development
+          build — to production, on a rationale that doesn't match how Vue's prod build behaves.
+          <code>vue.global.prod.js</code> is 60.8&nbsp;KB. Untested, cheap to check on staging,
+          nothing to do with concepts.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap row">
+    <div class="rail"><b>Sources</b>Read from source</div>
+    <div class="prose">
+      <p class="muted">
+        Every concept above verified against petite-vue's source rather than its documentation.
+      </p>
+      <ul class="srcs">
+        <li><a href="https://github.com/vuejs/petite-vue">vuejs/petite-vue</a> — app.ts · walk.ts · context.ts · eval.ts · utils.ts · directives/</li>
+        <li>Local — <code>vueflow-ai/src/mountIsland.js</code>, <code>useSharedStore.js</code>, <code>useWebflowCMS.js</code></li>
+        <li>Local — <code>haufe-fjc/src/apps/shared/appGuards.js</code>, <code>scripts/check-dom-contract.mjs</code></li>
+      </ul>
+    </div>
+  </div>
+</footer>
