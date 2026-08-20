@@ -1,13 +1,42 @@
 # Vueflow — public launch plan
 
-Target: skill + package shippable by **Fri 2026-08-21**.
+Target: skill + package shippable — date reopened 2026-08-19, see RESUME.
 Written 2026-08-16.
 
 ---
 
-## ▶ RESUME HERE (last touched 2026-08-16)
+## ▶ RESUME HERE (last touched 2026-08-19)
 
 **Phase 1 complete, gate green.** `npm test` → 5/5 passing.
+
+### 2026-08-19 — Finsweet Attributes read, strategy changed
+
+Read `github.com/finsweet/attributes` at source. Four findings that move the plan:
+
+1. **They run on `@vue/reactivity` ^3.5.13** — `ref`, `computed`, `effect`,
+   `watch`, `shallowRef`, `triggerRef`, across 21 files of `packages/list`.
+   The market-leading Webflow filter library chose Vue's reactivity core. That
+   is the answer to "why not vanilla JS", and it's citable from their
+   `package.json`.
+2. **`combine`, `load`, `nest` already ship.** `src/combine/index.ts` merges
+   several Collection Lists in 44 lines. `src/load/load.ts` walks Webflow's
+   native pagination via `fetchPage`, breaking the 100-item ceiling.
+   `src/nest/index.ts` breaks the ~5-item nested limit. Filtering is not our
+   differentiator — **compose, don't compete** (see `PACKAGE.md` §1).
+3. **Their nested-limit workaround has a no-request path**: an item carrying a
+   comma-separated slug list (`nest-slugs`) is matched against another list
+   already on the page and cloned in. Fetching the item's template page is only
+   the fallback. The slug field is hand-maintained — our skill can generate and
+   drift-check it through the MCP.
+4. **`fetchPage` caching is worth copying**: in-flight dedupe, IndexedDB
+   persistence, and an IndexedDB version equal to the site's last-publish
+   timestamp, so republishing wipes the cache. Plus `attachExternalStylesheets`,
+   because Webflow's per-page CSS splitting means fetched markup arrives
+   unstyled.
+
+**Ship date reopened.** The launch is now a dependency of the demo video (which
+opens with installing the skill), not a competitor to it. Sequence agreed with
+Jan: helpers → installable package → CMS → wireframe → Figma → record.
 
 **Decisions locked:**
 
@@ -28,7 +57,10 @@ Superseded v-scope sweep files deleted.
 - `/vue/scopes` — the rejected v-scope sweep experiment. Delete or keep as a probe.
 
 **Next: phase 2** — port helpers from `vueflow-ai` + `haufe-fjc`, better half of
-each. Two calls already made, flagged and unobjected:
+each, now plus `fetchCollection` and `useFinsweetList` (see `PACKAGE.md` §2).
+Also outstanding: `parseEntry` must scope field lookup to the item's own subtree
+— today's unscoped `querySelectorAll('[data-field]')` merges nested-list child
+fields into the parent. Two calls already made, flagged and unobjected:
 1. `useWebflowCMS` takes FJC's extractor config — vueflow-ai's version can't do
    rich text or boolean-by-presence, which is why FJC needed its own parser.
 2. `appGuards`' reporting handlers become the default, not opt-in. Silent failure

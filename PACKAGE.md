@@ -29,6 +29,34 @@ package that ships CSS is a UI kit, which is a different product.
 **Functions, not a class.** There is no instance state to hold. `Vueflow.init()`
 would be ceremony around three named imports.
 
+### Alongside Finsweet Attributes — compose, and collaborate
+
+Established 2026-08-19 by reading their source. Finsweet's `list` package ships
+`combine`, `filter`, `sort`, `load`, `nest`, `pagination`, `tabs`, `select` —
+no-code, free, mature, and internally powered by `@vue/reactivity` ^3.5.13.
+
+This is not a competitive position. Vueflow is the FJC hybrid pattern extracted
+and open-sourced; it isn't sold, so there is no market to defend. Finsweet solved
+the CMS list plumbing well, and reaching for it where it fits is the correct
+engineering call, not a concession. Collaboration is welcome wherever it helps.
+
+The split that holds:
+
+| | Owner |
+|---|---|
+| Loading past 100 items, combining lists, nesting past 5, pagination | **Finsweet** |
+| Everything derived from those items, and every interaction | **Vueflow** |
+
+Their ceiling is that you get the behaviours they shipped, configured by
+attributes. The moment a requirement isn't in the attribute list — pricing that
+depends on the filter, a configurator, a cart surviving navigation, conditional
+UI — you leave their system and write JS against someone else's DOM. That gap is
+what this package covers.
+
+The skill decides per project (see the preflight table in `SKILL.md`), and is
+expected to answer "just use Finsweet, you don't need this" when that's true.
+
+
 ---
 
 ## 2. Exports
@@ -38,6 +66,8 @@ import {
   mountIsland,
   useSharedStore,
   useWebflowCMS,
+  fetchCollection,
+  useFinsweetList,
   cleanDOMForVue,
   auditContract,
   verifyMount,
@@ -74,15 +104,118 @@ independent feature.
 ### `useWebflowCMS({ selector, extractors })`
 
 Parses Webflow-rendered Collection Lists into a reactive `collections` object.
-Supports both conventions — `data-field-*` attributes on the item, and
-`<span data-field="name">` children whose text is CMS-bound.
 
-`extractors` covers what an attribute cannot hold, generalised from FJC's
-`collectionChildExtractors`: rich text, booleans-by-presence.
+Three conventions, freely mixable:
+
+| Marker | Where it works |
+|---|---|
+| `data-field-collection` / `data-field` attributes | static markup, outside Collection Lists |
+| `vf-c-<collection>` / `vf-f-<field>` **classes** | everywhere, and the **only** option inside a Collection Item |
+| nested groups | a nested Collection List becomes an array on the parent entry |
+
+Both marker styles work inside a Collection Item. The class convention is the
+**default**, not a necessity: it needs one API call per field instead of two,
+and a class cannot be stripped at publish.
+
+The one hard constraint, measured 2026-08-19: **a custom element inside a
+Collection Item breaks the CMS context**, so nothing below it can bind a field
+("Element is not inside a CMS context"). The field wrapper must therefore be a
+native element. Attributes on native elements inside a CMS item are fine — they
+just need `set_attributes` as a second pass, since native elements expose no
+`attributes` *setting* at creation time.
+
+`extractors` covers what an attribute cannot hold or what a string is the wrong
+type for, generalised from FJC's `collectionChildExtractors`: rich text,
+booleans-by-presence, numbers, delimited lists. Without them every field is a
+string, and the app ends up re-parsing prices and dates out of rendered text on
+every keystroke — the pathology `/filter-multiple-collections` shows with its
+hand-written AM/PM date splitter.
+
+Field lookup is scoped to the item's own subtree. A nested Collection List
+inside an item is a separate group, not extra fields on the parent — an
+unscoped `querySelectorAll('[data-field]')` silently merges child fields into
+the parent and the last one wins.
 
 > **Rule:** parse at boot, before any mount, and keep the Collection List shell
 > **outside every island**. Vue empties its mount target — a list inside an
 > island becomes a render artifact of the thing that was supposed to read it.
+
+### `fetchCollection(url, { selector, extractors, cache })`
+
+Fetches a Webflow-rendered page, parses it with the same conventions as
+`useWebflowCMS`, and returns the entries. Same output shape, different source.
+
+```js
+const { entries, pending, error } = fetchCollection(`/beans/${slug}`, {
+  selector: '[data-field-collection="guides"]',
+  extractors: { steps: richText('.w-richtext') },
+});
+```
+
+Origin: FJC's `fetchModulesForOrderable`, itself a hardened version of the
+jQuery trick every Webflow filter build uses —
+`$(target).load('/collection/slug .fragment')`.
+
+**Cache design, taken from Finsweet** (`@finsweet/attributes-utils`,
+`helpers/fetch.ts`, Apache-2.0 — read 2026-08-19, worth copying rather than
+reinventing):
+
+- an in-flight `Map` keyed by URL, so N callers wanting one page make one request
+- IndexedDB persistence, so the cache survives navigation and sessions
+- **the IndexedDB version number is the site's last-publish timestamp**, scraped
+  from the `<!-- Last Published: … -->` comment Webflow injects into every page.
+  Republish → version bumps → the store is wiped. Cache invalidation with zero
+  configuration and no way to serve content from before the last publish.
+
+> **Gotcha:** Webflow now splits CSS per page, so markup fetched from another
+> page can arrive unstyled. Finsweet carries an `attachExternalStylesheets()`
+> step for exactly this. Anything we inject from a fetched document needs the
+> same treatment.
+
+Exists because of a hard Webflow ceiling: a Collection List renders at most 100
+items, a *nested* list about five. A collection template page has neither limit
+for the item it belongs to — so a relation too large for the list page moves to
+its own page and is pulled in on demand.
+
+> **Rule:** filter-relevant data belongs on the page, synchronously. Only detail
+> belongs behind a fetch. The standard failure — live on the sandbox at
+> `/filter-multiple-collections` — is AJAX-ing per item what should have been
+> rendered once: 24 uncached requests before filtering can begin, and a
+> two-second timer hoping they finished.
+
+When a relation must be fetched for a *facet*, fetch the small side. Forty beans
+asking which methods they have is forty requests; six methods asking which beans
+they have is six.
+
+### `useFinsweetList(instance)`
+
+Mirrors a Finsweet Attributes list instance into a Vueflow shared store, so
+islands can read and drive a list that Finsweet owns.
+
+```js
+const { items, filters } = useFinsweetList('beans');
+```
+
+Finsweet's `list` package already solves the Webflow plumbing properly: loading
+past 100 items by walking native pagination, combining several Collection Lists,
+nesting past the five-item limit, load-more and infinite scroll. Rebuilding that
+to own it would be vanity.
+
+Their seam is public and documented:
+
+```js
+window.FinsweetAttributes.push(['list', (listInstances) => { … }]);
+listInstance.addHook('afterRender', (items) => { … });   // subscribe
+listInstance.filters.value.groups[0].conditions.push({ … });  // drive
+listInstance.sorting.value = { fieldKey: 'price', direction: 'asc' };
+```
+
+> **Constraint:** Finsweet bundles its own `@vue/reactivity`; we load Vue from
+> the CDN. Two copies, two dependency-tracking contexts — a `computed` of ours
+> reading a `ref` of theirs evaluates once and never invalidates. So the bridge
+> must be explicit: subscribe with `addHook`, write into our own `reactive()`.
+> Never assume transparent interop. *(Reasoned from their bundling, not yet
+> measured — verify before relying on it.)*
 
 ### `cleanDOMForVue(root, label)`
 

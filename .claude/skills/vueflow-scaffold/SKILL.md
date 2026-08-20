@@ -123,6 +123,190 @@ The `touch` is the trick that ties Webflow publishes to Vite HMR. Without it, th
 
 ## Guidelines
 
+### Building a CMS data shell — measured rules (2026-08-19, live API)
+
+**The hard rule: never use a custom element as a wrapper inside a Collection
+Item.** A `DOM` / `BY_CUSTOM_TAG` element there *breaks the CMS context* — every
+descendant fails to bind with "Element is not inside a CMS context". Field
+wrappers must be native (DivBlock etc.).
+
+**Attributes inside a Collection Item do work** — verified live: `fs-list-field`
+on a native DivBlock and `fs-list-element` on the DynamoItem both published.
+They need `set_attributes` as a **second pass**, because native elements expose
+no `attributes` setting at creation. (This also means Finsweet's per-item
+attributes are fully scaffoldable through the API.)
+
+**Default to class markers anyway:** `vf-c-<collection>` on the item wrapper,
+`vf-f-<field>` on each field element, value via a bound `text`. One API call per
+field instead of two, and a class cannot be stripped at publish. `data-field`
+remains supported where it reads better.
+
+```
+DynamoItem
+  DivBlock .vf-c-beans
+    DivBlock .vf-f-name          ← text bound to Beans → Name
+    DivBlock .vf-f-price         ← text bound to Beans → Price
+    CMSCollection (multi-ref)    ← nested, see limit below
+      DivBlock .vf-c-methods
+        DivBlock .vf-f-name
+```
+
+**Nested Collection Lists render 5 items, measured.** A bean with six linked
+brew methods published exactly five. Six top-level + 36 links became 41 rendered
+groups, not 42. Anything past five must move to the item's template page and be
+fetched.
+
+**Multi-reference source** on a nested list:
+`static_json` `{"collectionId":"<target>","fieldId":"<multiref field on parent>"}`
+on the nested DynamoWrapper.
+
+### Paginated lists: the parse must wait (measured 2026-08-19)
+
+With 120 items in the collection:
+
+| list config | rendered | reachable |
+|---|---|---|
+| no pagination, `limit 100` | 100 | 100 — the other 20 unreachable, **no** page links emitted |
+| pagination on, 25/page | 25 | all 120, via `?<token>_page=N` |
+
+Both states make a boot-time parse lie. Unpaginated it reported "100 of 100";
+paginated it reported "25 of 25". Silent under-reporting is the default failure.
+
+**`pagination` IS writable through the API** — shape `{ "itemsPerPage": N }`,
+confirmed by reading it back after a Designer toggle and getting the identical
+shape. What the API does **not** do is insert the Previous/Next elements, and
+Webflow emits no `…_page` token and no `w-pagination-next` without them. So the
+Designer toggle is required for its *elements*, not for its setting. Ask the user
+to flip it (see § Designer-only steps).
+
+**Then walk the pages before trusting any number.** `loadAllPages(collections)`
+follows `.w-pagination-next`, fetches each page through the shared document
+cache, and appends. Scope each page's parse to the list that owns the token —
+otherwise every fetch re-ingests the other Collection Lists on the page and their
+entries multiply.
+
+**Consequence for the app:** anything derived from a paginated list is provisional
+until the walk resolves. Hold a `catalogPending` flag, bind it in the UI, and
+build the data as a `computed` over the collections ref so late pages flow
+through. A one-shot `const beans = [...]` at module scope silently freezes the
+first page.
+
+**Alternative:** Finsweet's `load` does the same walk (`src/load/load.ts`) and is
+the better choice once the item count makes our own walk unreasonable. It has the
+same prerequisite — it returns early when no pagination elements exist.
+
+### element_builder quirks that cost real time
+
+- **`set_text` and `settings` inside `children[]` are silently ignored.** The
+  element is created, the text is not applied — every TextBlock ends up holding
+  "This is some text inside of a div block." Always do a second pass.
+- **Children created in the same call as their parent are not yet in CMS
+  context**, so their bindings fail. Create the parent, then the children.
+- **The text setting key is `text`** (its *valueType* is `textContent`). Passing
+  `textContent` as the key is rejected. Read the keys with
+  `get_settings type:"query_settings"` rather than guessing from
+  `get_bindable_sources`, which reports value types.
+- **`set_text` (element tool) fails on Block-type elements** with "This element
+  doesn't support text" — those need `set_settings` key `text` with
+  `static_text`. It works on Heading, Paragraph and Link.
+- **`type` is a reserved attribute name** on `BY_CUSTOM_TAG` `button` (it is
+  accepted on `input`).
+- **`BY_CUSTOM_TAG` `button` becomes a Link element**, published as `<a>`.
+
+### Directives that survive publish — verified live 2026-08-19
+
+On custom elements created via `BY_CUSTOM_TAG` with `set_attributes` at creation,
+all of these reached the published page intact: `v-for`, `v-if`, `v-model`,
+`v-model.number`, `v-bind:value`, `v-bind:key`, `v-on:click`, and `{{ }}` in
+bound text. The earlier "Webflow strips every `v-*`" rule applies to
+`whtml_builder`, not to this path.
+
+### Designer-only steps: ask, do not engineer around (added 2026-08-19)
+
+Some Webflow capabilities have no API surface. When one blocks the build, **stop
+and ask the user for the one Designer action**, then continue. Do not invent a
+workaround that changes the architecture without surfacing the choice — a
+ten-second toggle beats a structural compromise the user never agreed to.
+
+Known Designer-only actions:
+
+| Need | Why the API can't | Ask the user to |
+|---|---|---|
+| Pagination **elements** on a Collection List | the `pagination` *setting* is writable via API (`{itemsPerPage:N}`) and takes effect, but `element_builder` has no pagination element type, so no `…_page` token and no `w-pagination-next` are emitted | select the Collection List → Settings (D) → Collection List Settings → **Paginate Items**, set items per page |
+| Native Lightbox media items | not writable through any MCP surface | select each Lightbox link → Settings → add media |
+
+How to ask: name the element, give the exact click path, say what you will do
+once it exists, and then **verify by re-fetching the published page** rather than
+trusting that it was done.
+
+If the user declines or is unavailable, only then propose the workaround — and
+state its cost explicitly (for pagination: offset-stacked lists cost one
+duplicated item shell per 100 items).
+
+### Preflight — decide whether to build at all (added 2026-08-19)
+
+Run this before scaffolding anything. Finsweet Attributes (`list`) already ships
+`combine`, `filter`, `sort`, `load`, `nest`, `pagination`, `select` — no-code and
+free. Vueflow's value is custom logic, not CMS list plumbing. Vueflow is not sold
+and competes with nothing, so reaching for Finsweet where it fits is the correct
+call, never a concession.
+
+Item count is **not** the trigger. Getting past the 100-item render cap is the one
+thing our own `loadAllPages` does just as well. The real questions are how many
+list behaviours the project needs, and whether the cache must survive navigation.
+
+| What the project needs | Decision |
+|---|---|
+| Users navigate around the site, or several list behaviours (combine + nest + load + sort) | **Compose** — Finsweet owns the list; islands read it via `useFinsweetList` |
+| One list, one behaviour, single-page visit, no dependency wanted | **Build** — `loadAllPages`, ~90 lines, zero dependencies |
+| Both | Compose for the list, islands for the logic |
+| Plain filter/sort and nothing else | **Recommend Finsweet alone and stop.** Say so plainly. |
+
+**Measured on 120 beans in Chrome, 2026-08-19** — this is why cache lifetime is the
+deciding factor:
+
+| | first visit | return visit |
+|---|---|---|
+| Finsweet `fs-list-load="all"` | 5 fetches (a `?…_page=9999` probe to discover the total, then pages 2–5), **3052 ms** | **0 fetches, 26 ms** |
+| our `loadAllPages` | 4 sequential fetches | 4 fetches again — its cache is an in-memory `Map` that dies with the page |
+
+Their persistence is an IndexedDB store named after the site ID, versioned by the
+site's last-publish timestamp (observed: db `61d44e644e2a5769e18a848c`, version
+`1787153753000`). Republishing bumps the version and wipes it, so it cannot serve
+stale content. We have no equivalent, and a 117× difference on a return visit is
+not something to hand-wave.
+
+Composing means depending on a third-party hosted script. State that cost to the
+user rather than hiding it, and keep the build-from-scratch path real.
+
+**Bridging constraint:** Finsweet bundles its own `@vue/reactivity` and we load
+Vue from the CDN — two tracking contexts. A `computed` of ours reading a `ref` of
+theirs evaluates once and never invalidates. Always bridge explicitly:
+`listInstance.addHook('afterRender', …)` in, direct mutation of
+`listInstance.filters.value` / `.sorting.value` / `.items.value` out.
+
+### Relation modelling — when a loader is unavoidable (added 2026-08-19)
+
+| Relation | Rendered where | Sync | Loader |
+|---|---|---|---|
+| Single reference | fields inline on the item | yes | no |
+| Multi-ref, ≤5 targets | nested Collection List | yes | no |
+| Multi-ref, >5, needed for **filtering** | fetch at boot, or restructure as a join collection, or a hand-maintained comma-separated slug field | no / yes | yes / no |
+| Multi-ref, >5, needed only in **detail** | item template page, fetched on demand | no | yes, in the panel only |
+
+Rules that follow:
+
+- Nothing the filter reads may arrive after boot. A filter-level spinner is a
+  symptom of the content being modelled wrong, not a feature.
+- Request count must scale with user actions, not dataset size. Fetching per item
+  at load is the standard failure (see `/filter-multiple-collections` on
+  jan-blank-sandbox: 24 uncached requests plus a `setTimeout(…, 2000)`).
+- When a relation must be fetched for a facet, **fetch the small side**. 40 beans
+  asking for their methods is 40 requests; 6 methods asking for their beans is 6.
+- Fetched markup can arrive unstyled — Webflow splits CSS per page. Carry the
+  stylesheets over from the fetched document.
+
+
 ### Bridge install constraints
 - 2000-char limit on inline `sourceCode`
 - No `<script>` tags or external `<script src=...>` allowed inside `sourceCode` — Webflow wraps it in a `<script>` itself
