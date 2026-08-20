@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { mountIsland } from '../src/mountIsland.js';
+import { mountIsland, unmountIsland } from '../src/mountIsland.js';
 import { ref, computed } from 'vue';
 
 /**
@@ -91,5 +91,40 @@ describe('mountIsland', () => {
     const rescued = document.querySelector('#island script.w-json');
     expect(rescued).not.toBeNull();
     expect(rescued.textContent).toBe('{"items":[]}');
+  });
+});
+
+describe('re-mounting (page-transition safety)', () => {
+  it('is a no-op when the same element is mounted twice', () => {
+    document.body.innerHTML = '<div id="island"><button v-on:click="n++">go</button><span>{{ n }}</span></div>';
+    const setup = () => ({ n: ref(1) });
+    const first = mountIsland('#island', 'once', setup);
+    const second = mountIsland('#island', 'once', setup);
+    expect(second).toBe(first);
+    document.querySelector('#island button').click();
+    return Promise.resolve().then(() => {
+      expect(document.querySelector('#island span').textContent).toBe('2');
+    });
+  });
+
+  it('mounts a replacement element after its container was swapped', async () => {
+    document.body.innerHTML = '<div id="wrap"><div id="island"><span>{{ n }}</span></div></div>';
+    mountIsland('#island', 'swap', () => ({ n: ref(1) }));
+    expect(document.querySelector('#island span').textContent).toBe('1');
+
+    // What barba/swup do: replace the container's contents wholesale.
+    document.querySelector('#wrap').innerHTML = '<div id="island"><span>{{ n }}</span></div>';
+    const revived = mountIsland('#island', 'swap', () => ({ n: ref(7) }));
+    expect(revived).not.toBeNull();
+    expect(document.querySelector('#island span').textContent).toBe('7');
+  });
+
+  it('unmountIsland allows a deliberate remount of the same element', () => {
+    document.body.innerHTML = '<div id="island"><span>{{ n }}</span></div>';
+    mountIsland('#island', 'again', () => ({ n: ref(1) }));
+    expect(unmountIsland('#island')).toBe(true);
+    document.querySelector('#island').innerHTML = '<span>{{ n }}</span>';
+    mountIsland('#island', 'again', () => ({ n: ref(5) }));
+    expect(document.querySelector('#island span').textContent).toBe('5');
   });
 });

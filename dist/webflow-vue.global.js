@@ -30,11 +30,16 @@ var WebflowVue = function(exports, vue) {
       }
     };
   }
+  const mounted = /* @__PURE__ */ new WeakMap();
   function mountIsland(selector, label, setup) {
     const root = document.querySelector(selector);
     if (!root) {
       console.log(`[webflow-vue:island] "${label}" skipped — ${selector} not on this page`);
       return null;
+    }
+    if (mounted.has(root)) {
+      console.log(`[webflow-vue:island] "${label}" already mounted on ${selector} — skipped`);
+      return mounted.get(root);
     }
     const t0 = performance.now();
     const sweep = cleanDOMForVue(root, label);
@@ -42,10 +47,19 @@ var WebflowVue = function(exports, vue) {
     app.config.errorHandler = (err, _vm, info) => console.error(`[webflow-vue:island] "${label}" runtime error (${info})`, err);
     app.mount(root);
     sweep.restore();
+    mounted.set(root, app);
     console.log(
       `[webflow-vue:island] "${label}" mounted on ${selector} in ${(performance.now() - t0).toFixed(1)}ms`
     );
     return app;
+  }
+  function unmountIsland(selector) {
+    const root = typeof selector === "string" ? document.querySelector(selector) : selector;
+    if (!root || !mounted.has(root)) return false;
+    mounted.get(root).unmount();
+    mounted.delete(root);
+    console.log(`[webflow-vue:island] unmounted ${typeof selector === "string" ? selector : "element"}`);
+    return true;
   }
   const STORAGE_PREFIX = "webflow-vue:store:";
   const registry = /* @__PURE__ */ new Map();
@@ -391,7 +405,7 @@ var WebflowVue = function(exports, vue) {
     number,
     richText
   }, Symbol.toStringTag, { value: "Module" }));
-  const version = "0.0.3";
+  const version = "0.0.4";
   exports.cleanDOMForVue = cleanDOMForVue;
   exports.clearCollectionCache = clearCollectionCache;
   exports.extractors = extractors;
@@ -402,6 +416,7 @@ var WebflowVue = function(exports, vue) {
   exports.mountIsland = mountIsland;
   exports.parseItemElement = parseItemElement;
   exports.resetSharedStore = resetSharedStore;
+  exports.unmountIsland = unmountIsland;
   exports.useFinsweetList = useFinsweetList;
   exports.useSharedStore = useSharedStore;
   exports.useWebflowCMS = useWebflowCMS;
