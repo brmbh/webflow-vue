@@ -66,12 +66,12 @@ export function fetchCollection(url, { parse, signal } = {}) {
       const doc = await loadDocument(url, { signal });
       entries.value = parse ? parse(doc) : [];
       console.log(
-        `[vueflow:fetch] ${url} → ${entries.value.length} entr${entries.value.length === 1 ? 'y' : 'ies'}` +
+        `[webflow-vue:fetch] ${url} → ${entries.value.length} entr${entries.value.length === 1 ? 'y' : 'ies'}` +
           (documents.has(url) ? ' (cached after first hit)' : '')
       );
     } catch (err) {
       error.value = err;
-      console.error(`[vueflow:fetch] ${url} failed`, err);
+      console.error(`[webflow-vue:fetch] ${url} failed`, err);
     } finally {
       pending.value = false;
     }

@@ -210,7 +210,7 @@ if (route === 'compose') {
         collections.value = { ...collections.value, beans: entries.value };
       }
       console.log(
-        `[vueflow:catalog] compose (Finsweet) — ${beans.value.length} beans in ${Math.round(performance.now() - started)}ms`
+        `[webflow-vue:catalog] compose (Finsweet) — ${beans.value.length} beans in ${Math.round(performance.now() - started)}ms`
       );
     })
     .finally(() => {
@@ -220,7 +220,7 @@ if (route === 'compose') {
   loadAllPages(collections, { extractors: EXTRACTORS })
     .then(({ pagesFetched }) => {
       console.log(
-        `[vueflow:catalog] build (own walker) — ${beans.value.length} beans after ${pagesFetched} sequential fetch(es) in ${Math.round(performance.now() - started)}ms`
+        `[webflow-vue:catalog] build (own walker) — ${beans.value.length} beans after ${pagesFetched} sequential fetch(es) in ${Math.round(performance.now() - started)}ms`
       );
     })
     .finally(() => {

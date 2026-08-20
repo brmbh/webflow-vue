@@ -1,4 +1,4 @@
-var Vueflow = function(exports, vue) {
+var WebflowVue = function(exports, vue) {
   "use strict";
   function cleanDOMForVue(rootEl, label = rootEl.id || "island") {
     const rescued = [];
@@ -13,11 +13,11 @@ var Vueflow = function(exports, vue) {
     }
     if (rescued.length || dropped.length) {
       console.log(
-        `[vueflow:clean] "${label}" swept before mount — rescued ${rescued.length} w-json config(s), stripped ${dropped.length} <style> block(s)`,
+        `[webflow-vue:clean] "${label}" swept before mount — rescued ${rescued.length} w-json config(s), stripped ${dropped.length} <style> block(s)`,
         { dropped }
       );
     } else {
-      console.log(`[vueflow:clean] "${label}" clean — no Webflow runtime nodes inside mount target`);
+      console.log(`[webflow-vue:clean] "${label}" clean — no Webflow runtime nodes inside mount target`);
     }
     return {
       rescuedCount: rescued.length,
@@ -25,7 +25,7 @@ var Vueflow = function(exports, vue) {
       restore() {
         for (const node of rescued) rootEl.appendChild(node);
         if (rescued.length) {
-          console.log(`[vueflow:clean] "${label}" restored ${rescued.length} rescued node(s) post-mount`);
+          console.log(`[webflow-vue:clean] "${label}" restored ${rescued.length} rescued node(s) post-mount`);
         }
       }
     };
@@ -33,54 +33,54 @@ var Vueflow = function(exports, vue) {
   function mountIsland(selector, label, setup) {
     const root = document.querySelector(selector);
     if (!root) {
-      console.log(`[vueflow:island] "${label}" skipped — ${selector} not on this page`);
+      console.log(`[webflow-vue:island] "${label}" skipped — ${selector} not on this page`);
       return null;
     }
     const t0 = performance.now();
     const sweep = cleanDOMForVue(root, label);
     const app = vue.createApp({ setup });
-    app.config.errorHandler = (err, _vm, info) => console.error(`[vueflow:island] "${label}" runtime error (${info})`, err);
+    app.config.errorHandler = (err, _vm, info) => console.error(`[webflow-vue:island] "${label}" runtime error (${info})`, err);
     app.mount(root);
     sweep.restore();
     console.log(
-      `[vueflow:island] "${label}" mounted on ${selector} in ${(performance.now() - t0).toFixed(1)}ms`
+      `[webflow-vue:island] "${label}" mounted on ${selector} in ${(performance.now() - t0).toFixed(1)}ms`
     );
     return app;
   }
-  const STORAGE_PREFIX = "vueflow:store:";
+  const STORAGE_PREFIX = "webflow-vue:store:";
   const registry = /* @__PURE__ */ new Map();
   function hydrate(name) {
     try {
       const raw = sessionStorage.getItem(STORAGE_PREFIX + name);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      console.log(`[vueflow:store] "${name}" hydrated from sessionStorage`, parsed);
+      console.log(`[webflow-vue:store] "${name}" hydrated from sessionStorage`, parsed);
       return parsed;
     } catch (err) {
-      console.warn(`[vueflow:store] "${name}" hydration failed — starting fresh`, err);
+      console.warn(`[webflow-vue:store] "${name}" hydration failed — starting fresh`, err);
       return null;
     }
   }
   function useSharedStore(name = "default", initialState = {}, options = {}) {
     const { persist = false } = options;
     if (registry.has(name)) {
-      console.log(`[vueflow:store] "${name}" → existing instance reused (cross-island link established)`);
+      console.log(`[webflow-vue:store] "${name}" → existing instance reused (cross-island link established)`);
       return registry.get(name);
     }
     const persisted = persist ? hydrate(name) : null;
     const store = vue.reactive({ ...initialState, ...persisted });
     registry.set(name, store);
-    console.log(`[vueflow:store] "${name}" created`, JSON.parse(JSON.stringify(store)), { persist });
+    console.log(`[webflow-vue:store] "${name}" created`, JSON.parse(JSON.stringify(store)), { persist });
     vue.watch(
       store,
       (state) => {
         const snapshot = JSON.parse(JSON.stringify(state));
-        console.log(`[vueflow:store] "${name}" mutated →`, snapshot);
+        console.log(`[webflow-vue:store] "${name}" mutated →`, snapshot);
         if (!persist) return;
         try {
           sessionStorage.setItem(STORAGE_PREFIX + name, JSON.stringify(snapshot));
         } catch (err) {
-          console.warn(`[vueflow:store] "${name}" persist failed`, err);
+          console.warn(`[webflow-vue:store] "${name}" persist failed`, err);
         }
       },
       { deep: true }
@@ -89,7 +89,7 @@ var Vueflow = function(exports, vue) {
   }
   function resetSharedStore(name = "default") {
     sessionStorage.removeItem(STORAGE_PREFIX + name);
-    console.log(`[vueflow:store] "${name}" sessionStorage cleared — reload to re-init`);
+    console.log(`[webflow-vue:store] "${name}" sessionStorage cleared — reload to re-init`);
   }
   const FIELD_PREFIX = "field";
   const GROUP_KEY = "collection";
@@ -178,7 +178,7 @@ var Vueflow = function(exports, vue) {
       ((_a = collections.value)[key] || (_a[key] = [])).push(entry);
     }
     console.log(
-      `[vueflow:cms] parsed ${roots.length} item element(s)` + (all.length !== roots.length ? ` (+${all.length - roots.length} nested)` : "") + " into collections:",
+      `[webflow-vue:cms] parsed ${roots.length} item element(s)` + (all.length !== roots.length ? ` (+${all.length - roots.length} nested)` : "") + " into collections:",
       Object.fromEntries(Object.entries(collections.value).map(([k, v]) => [k, v.length]))
     );
     return { collections };
@@ -222,11 +222,11 @@ var Vueflow = function(exports, vue) {
         const doc = await loadDocument(url, { signal });
         entries.value = parse ? parse(doc) : [];
         console.log(
-          `[vueflow:fetch] ${url} → ${entries.value.length} entr${entries.value.length === 1 ? "y" : "ies"}` + (documents.has(url) ? " (cached after first hit)" : "")
+          `[webflow-vue:fetch] ${url} → ${entries.value.length} entr${entries.value.length === 1 ? "y" : "ies"}` + (documents.has(url) ? " (cached after first hit)" : "")
         );
       } catch (err) {
         error.value = err;
-        console.error(`[vueflow:fetch] ${url} failed`, err);
+        console.error(`[webflow-vue:fetch] ${url} failed`, err);
       } finally {
         pending.value = false;
       }
@@ -264,7 +264,7 @@ var Vueflow = function(exports, vue) {
   async function loadAllPages(collections, { extractors: extractors2 = {}, root = document, maxPages = 50 } = {}) {
     const tokens = tokensIn(root);
     if (!tokens.length) {
-      console.log("[vueflow:pages] no pagination on this page — nothing to walk");
+      console.log("[webflow-vue:pages] no pagination on this page — nothing to walk");
       return { pagesFetched: 0, added: {} };
     }
     const merged = { ...collections.value };
@@ -290,7 +290,7 @@ var Vueflow = function(exports, vue) {
     }
     collections.value = merged;
     console.log(
-      `[vueflow:pages] walked ${pagesFetched} page(s), added`,
+      `[webflow-vue:pages] walked ${pagesFetched} page(s), added`,
       added,
       "→ totals",
       Object.fromEntries(Object.entries(merged).map(([k, v]) => [k, v.length]))
@@ -335,12 +335,12 @@ var Vueflow = function(exports, vue) {
           read(list2);
         });
         console.log(
-          `[vueflow:finsweet] list "${list2.instance ?? "(default)"}" ready — ${entries.value.length} item(s) parsed`
+          `[webflow-vue:finsweet] list "${list2.instance ?? "(default)"}" ready — ${entries.value.length} item(s) parsed`
         );
         return list2;
       } catch (err) {
         error.value = err;
-        console.error("[vueflow:finsweet] compose path failed", err);
+        console.error("[webflow-vue:finsweet] compose path failed", err);
         return null;
       } finally {
         pending.value = false;
@@ -391,7 +391,7 @@ var Vueflow = function(exports, vue) {
     number,
     richText
   }, Symbol.toStringTag, { value: "Module" }));
-  const version = "0.0.2";
+  const version = "0.0.3";
   exports.cleanDOMForVue = cleanDOMForVue;
   exports.clearCollectionCache = clearCollectionCache;
   exports.extractors = extractors;

@@ -1,4 +1,4 @@
-# Vueflow
+# Webflow Vue
 
 Vue 3 islands on Webflow-rendered DOM. Webflow owns the markup and the styling;
 Vue owns the behaviour. No build step required, and no page-wide takeover — the
@@ -13,7 +13,7 @@ Paste into your Webflow page's **custom code (head)**:
 
 ```html
 <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/vueflow@0.0.2/dist/vueflow.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/webflow-vue@0.0.2/dist/webflow-vue.global.js"></script>
 ```
 
 Give any element an id — that is your island. Then add an **embed placed after
@@ -23,7 +23,7 @@ mounts nothing):
 ```html
 <script>
   const { ref, computed } = Vue
-  const { mountIsland } = Vueflow
+  const { mountIsland } = Webflow Vue
 
   mountIsland('#counter', 'counter', () => {
     const cups = ref(1)
@@ -47,15 +47,15 @@ template *is* the live Webflow DOM, so the template compiler has to be present.
 ### Agent skill
 
 ```bash
-npx skills add brmbh/vueflow
+npx skills add brmbh/webflow-vue
 ```
 
-Installs `vueflow-scaffold`, which drives the Webflow MCP to build islands for
+Installs `webflow-vue-scaffold`, which drives the Webflow MCP to build islands for
 you — bridge install, DOM scaffold, matching Vue code, publish.
 
 ## Why islands
 
-Wrapping a whole Webflow page in one Vue app breaks Webflow's runtime: Vue's compiler rebuilds the mount target, destroying lightbox JSON configs (`script.w-json`), slider DOM, and native interactions. Vueflow mounts **one `createApp` per interactive component** on its own root element — everything outside the islands stays untouched Webflow DOM.
+Wrapping a whole Webflow page in one Vue app breaks Webflow's runtime: Vue's compiler rebuilds the mount target, destroying lightbox JSON configs (`script.w-json`), slider DOM, and native interactions. Webflow Vue mounts **one `createApp` per interactive component** on its own root element — everything outside the islands stays untouched Webflow DOM.
 
 ## Setup
 
@@ -63,7 +63,7 @@ Wrapping a whole Webflow page in one Vue app breaks Webflow's runtime: Vue's com
 npm install
 npm run dev    # https://localhost:3000 — local dev harness with HMR
 npm run build      # dist/main.js — demo app bundle, for Webflow asset upload
-npm run build:lib  # dist/vueflow.global.js + .esm.js — the library
+npm run build:lib  # dist/webflow-vue.global.js + .esm.js — the library
 npm test           # vitest + jsdom
 ```
 
@@ -107,9 +107,9 @@ Every island calling `useSharedStore('cart')` gets the same reactive object — 
 
 ## Case studies (live on the sandbox)
 
-Both wireframe-styled, built 100% through the Webflow MCP from one chat session, `console.log`-instrumented (`[vueflow:*]` prefixes) and verified by driving a real browser.
+Both wireframe-styled, built 100% through the Webflow MCP from one chat session, `console.log`-instrumented (`[webflow-vue:*]` prefixes) and verified by driving a real browser.
 
-1. **Vueflow Islands** — `/vue/vueflow-islands?debug`
+1. **Webflow Vue Islands** — `/vue/vueflow-islands?debug`
    The mechanics: counter island + status island sharing one store across page regions, CMS filter island, sessionStorage hydration, `cleanDOMForVue` rescuing a lightbox config.
 2. **Brew Lab** — `/brew-lab?debug` + `/brew-lab-about?debug`
    The product-shaped demo: bean grid from a real, MCP-bound CMS Collection List with reactive facets; subscription configurator (grind/size/frequency → live price + discount); **navbar cart badge that persists across pages**; origin island fetching live Open-Meteo weather for the selected bean's growing region. DOM classed per the Semantic Framework (composition owns spacing, BEM components, `is-*` combos) so a design pass needs zero DOM/code changes.
@@ -134,9 +134,9 @@ claude plugin install webflow-skills@webflow-skills
 
 - **Required:** `webflow-skills:custom-code-management` — bridge registration + page apply
 - **Recommended:** `safe-publish`, `site-audit`, `link-checker`
-- **Local:** `.claude/skills/vueflow-scaffold` — orchestrates bridge install, code + DOM co-evolution, publish + auto-reload
+- **Local:** `.claude/skills/webflow-vue-scaffold` — orchestrates bridge install, code + DOM co-evolution, publish + auto-reload
 
 ### Planned / Wanted
 
-- **`vueflow-data-bridge`** — scaffold a CMS-bound reactive list end-to-end (the Brew Lab beans pipeline, generalized)
-- **`vueflow-verify`** — diff the Vue contract (mount selectors, `v-*` directives, refs) against live Webflow DOM, report drift
+- **`webflow-vue-data-bridge`** — scaffold a CMS-bound reactive list end-to-end (the Brew Lab beans pipeline, generalized)
+- **`webflow-vue-verify`** — diff the Vue contract (mount selectors, `v-*` directives, refs) against live Webflow DOM, report drift

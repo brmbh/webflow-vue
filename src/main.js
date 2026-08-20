@@ -6,7 +6,7 @@ import './apps/hello.js';
 import './apps/brewlab.js';
 import './apps/filterlab.js';
 
-console.log('[vueflow] main.js loaded', new Date().toISOString());
+console.log('[webflow-vue] main.js loaded', new Date().toISOString());
 
 // ---------------------------------------------------------------------------
 // Islands demo page (/vue/vueflow-islands) — each island skips itself when
@@ -17,7 +17,7 @@ const demoStore = useSharedStore('demo', { count: 0 }, { persist: true });
 watch(
   () => demoStore.count,
   (next, prev) =>
-    console.log(`[vueflow:debug] shared count ${prev} → ${next} (all islands re-render from one mutation)`)
+    console.log(`[webflow-vue:debug] shared count ${prev} → ${next} (all islands re-render from one mutation)`)
 );
 
 mountIsland('#vf-counter', 'counter', () => {
@@ -26,7 +26,7 @@ mountIsland('#vf-counter', 'counter', () => {
   const bump = (n) => {
     store.count += n;
     localClicks.value += 1;
-    console.log(`[vueflow:island] "counter" bump(${n}) — shared=${store.count}, local=${localClicks.value}`);
+    console.log(`[webflow-vue:island] "counter" bump(${n}) — shared=${store.count}, local=${localClicks.value}`);
   };
   return { store, localClicks, bump };
 });
@@ -51,4 +51,4 @@ mountIsland('#vf-cms', 'cms-filter', () => {
   return { collections, query, courses };
 });
 
-console.log('[vueflow] boot complete — islands mounted, everything else is untouched Webflow DOM');
+console.log('[webflow-vue] boot complete — islands mounted, everything else is untouched Webflow DOM');

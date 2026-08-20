@@ -12,7 +12,7 @@ const USAGE = `vueflow ${pkg.version}
   Vue 3 islands on Webflow-rendered DOM.
 
 Usage
-  npx vueflow init [dir]     scaffold a Vueflow project (default: .)
+  npx webflow-vue init [dir]     scaffold a WebflowVue project (default: .)
 
 Options
   --force                    overwrite existing files
@@ -22,7 +22,7 @@ Options
 
 Not building a project? You may not need one. A single reactive widget can go
 straight into Webflow custom code with two script tags — see
-https://github.com/brmbh/vueflow#quick-start--two-script-tags
+https://github.com/brmbh/webflow-vue#quick-start--two-script-tags
 `;
 
 function parse(argv) {
@@ -76,10 +76,10 @@ Next:
   npm install
   npm run dev
 
-Then paste vueflow-bridge.html into your Webflow page's custom code — page
+Then paste webflow-vue-bridge.html into your Webflow page's custom code — page
 level only — and open the page with ?debug to load this dev server.
 
-Let an agent do the Webflow side:  npx skills add brmbh/vueflow`);
+Let an agent do the Webflow side:  npx skills add brmbh/webflow-vue`);
 } catch (err) {
   console.error(`vueflow init failed: ${err.message}`);
   process.exit(1);

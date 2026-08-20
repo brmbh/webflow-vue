@@ -146,7 +146,7 @@ export function useWebflowCMS({ selector = GROUP_SELECTOR, extractors = {}, root
   }
 
   console.log(
-    `[vueflow:cms] parsed ${roots.length} item element(s)` +
+    `[webflow-vue:cms] parsed ${roots.length} item element(s)` +
       (all.length !== roots.length ? ` (+${all.length - roots.length} nested)` : '') +
       ' into collections:',
     Object.fromEntries(Object.entries(collections.value).map(([k, v]) => [k, v.length]))

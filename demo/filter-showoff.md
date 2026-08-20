@@ -1,6 +1,6 @@
 # Filter Showoff — Live Demo Runbook
 
-The signature Vueflow demo: ask Claude in chat to add a live filter input over the existing CMS list. Claude scaffolds via Webflow MCP + edits the Vue source, publishes, the page auto-reloads via Vite HMR, and the list filters as you type. **No manual Designer edits, no manual reload.**
+The signature Webflow Vue demo: ask Claude in chat to add a live filter input over the existing CMS list. Claude scaffolds via Webflow MCP + edits the Vue source, publishes, the page auto-reloads via Vite HMR, and the list filters as you type. **No manual Designer edits, no manual reload.**
 
 ---
 
@@ -13,7 +13,7 @@ Verify the page is in the **clean post-rollback state** (no filter present yet):
 - **No `<input>` element above the list** — that's the rollback marker
 - Vite dev server running: `cd ~/Development/personal/vueflow-ai && npm run dev`
 - Webflow Designer open on the VUE MCP page (required for `element_builder` calls)
-- Local repo is on the right branch / commit (whatever is "clean Vueflow demo state")
+- Local repo is on the right branch / commit (whatever is "clean Webflow Vue demo state")
 
 ---
 

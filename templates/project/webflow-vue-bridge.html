@@ -1,5 +1,5 @@
 <!--
-  Vueflow bridge v0.3.0 — install as PAGE-LEVEL custom code.
+  WebflowVue bridge v0.3.0 — install as PAGE-LEVEL custom code.
 
   Site-level + page-level together mounts Vue twice. Page level only.
 
@@ -8,7 +8,7 @@
     *.webflow.io  -> staging bundle
     prod host     -> prod bundle
 
-  In debug, Vite serves Vue and Vueflow out of node_modules, so injecting the
+  In debug, Vite serves Vue and WebflowVue out of node_modules, so injecting the
   CDN copies as well would load two Vue instances whose reactivity does not
   interoperate. Outside debug there is no bundler, so both come from the CDN
   and the app bundle carries only your own code.
@@ -30,7 +30,7 @@
     document.body.appendChild(s);
   }
 
-  var VUEFLOW_VERSION = '__VUEFLOW_VERSION_EXACT__';
+  var WEBFLOW_VUE_VERSION = '__WEBFLOW_VUE_VERSION_EXACT__';
   var url = new URL(window.location);
   var debug = url.searchParams.get('debug') !== null;
 
@@ -43,11 +43,11 @@
     addScript('https://localhost:3000/src/main.js', true);
   } else {
     var VUE_CDN = 'https://unpkg.com/vue@3/dist/vue.global.prod.js';
-    var VUEFLOW_CDN =
-      'https://cdn.jsdelivr.net/npm/vueflow@' + VUEFLOW_VERSION + '/dist/vueflow.global.js';
+    var WEBFLOW_VUE_CDN =
+      'https://cdn.jsdelivr.net/npm/webflow-vue@' + WEBFLOW_VUE_VERSION + '/dist/webflow-vue.global.js';
 
     addScript(VUE_CDN, false, function () {
-      addScript(VUEFLOW_CDN, false, function () {
+      addScript(WEBFLOW_VUE_CDN, false, function () {
         addScript(url.host.match(/webflow\.io/) ? STAGING_BUNDLE : PROD_BUNDLE, false);
       });
     });

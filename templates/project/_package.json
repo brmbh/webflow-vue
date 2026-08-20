@@ -8,7 +8,7 @@
     "build": "vite build"
   },
   "dependencies": {
-    "vueflow": "__VUEFLOW_VERSION__"
+    "webflow-vue": "__WEBFLOW_VUE_VERSION__"
   },
   "devDependencies": {
     "vite": "^5.4.0",

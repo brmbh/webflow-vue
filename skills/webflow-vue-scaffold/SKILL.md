@@ -1,11 +1,11 @@
 ---
-name: vueflow-scaffold
-description: Bootstrap or extend a Vue-on-Webflow hybrid mount on a target Webflow page. Scaffolds a Vueflow project with `npx vueflow init`, installs the bridge script via Webflow MCP, builds reactive DOM plus the matching Vue code, and publishes with auto-reload of the local Vite dev server. Also decides when no project is needed at all and two CDN script tags will do. Use when the user says "scaffold a Vue mount on Webflow", "set up Vueflow on this page", "add a Vue island to my Webflow page", "add reactivity to Webflow", "publish Vueflow changes", or "bootstrap the Vueflow bridge".
+name: webflow-vue-scaffold
+description: Bootstrap or extend a Vue-on-Webflow hybrid mount on a target Webflow page. Scaffolds a Webflow Vue project with `npx webflow-vue init`, installs the bridge script via Webflow MCP, builds reactive DOM plus the matching Vue code, and publishes with auto-reload of the local Vite dev server. Also decides when no project is needed at all and two CDN script tags will do. Use when the user says "scaffold a Vue mount on Webflow", "set up Webflow Vue on this page", "add a Vue island to my Webflow page", "add reactivity to Webflow", "publish Webflow Vue changes", or "bootstrap the Webflow Vue bridge".
 license: MIT
 allowed-tools: Read Edit Bash mcp__claude_ai_Webflow__webflow_guide_tool mcp__claude_ai_Webflow__data_sites_tool mcp__claude_ai_Webflow__data_pages_tool mcp__claude_ai_Webflow__data_scripts_tool mcp__claude_ai_Webflow__data_element_tool mcp__claude_ai_Webflow__data_element_builder mcp__claude_ai_Webflow__data_element_settings_tool mcp__claude_ai_Webflow__data_style_tool mcp__claude_ai_Webflow__data_assets_tool
 ---
 
-# Vueflow Scaffold
+# Webflow Vue Scaffold
 
 Orchestrate Vue-on-Webflow hybrid scaffolding: project bootstrap, bridge install, mount-point creation, code + DOM co-evolution, publish, and auto-reload of the local Vite dev server.
 
@@ -20,7 +20,7 @@ and none of the phases below apply. Hand them this and stop:
 
 ```html
 <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/vueflow@0.0.2/dist/vueflow.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/webflow-vue@0.0.2/dist/webflow-vue.global.js"></script>
 ```
 
 **Route 2 — a project.** Code that wants version control, a build step, real
@@ -28,7 +28,7 @@ files, or behaviour spanning more than one page. That is what this skill drives.
 
 **Do not build Route 2 for a counter.** Scaffolding a Vite project for a single
 widget is the wrong answer even though this skill is about Route 2. The API is
-identical either way — same `Vueflow` global, same `mountIsland` — so moving
+identical either way — same `WebflowVue` global, same `mountIsland` — so moving
 from Route 1 to Route 2 later costs nothing.
 
 ## Important Note
@@ -36,7 +36,7 @@ from Route 1 to Route 2 later costs nothing.
 Assumes:
 - Webflow MCP is connected and authed
 - Webflow Designer is open on the target page (required for Designer-side actions in Phase 3 + 4)
-- A Vueflow project in the working directory — **Phase 0 creates one if absent**
+- A Webflow Vue project in the working directory — **Phase 0 creates one if absent**
 - Local Vite dev server is running on `https://localhost:3000` (`npm run dev` in that project)
 - The user has the page open with `?debug` appended for live HMR
 
@@ -46,24 +46,24 @@ ALWAYS call `mcp__webflow__webflow_guide_tool` first.
 
 ### Phase 0 — Project bootstrap (skip if a project already exists)
 
-A Vueflow project is a directory carrying `vueflow` in its `package.json`
-dependencies, `src/main.js` as its entry, and `vueflow-bridge.html` beside them.
+A Webflow Vue project is a directory carrying `vueflow` in its `package.json`
+dependencies, `src/main.js` as its entry, and `webflow-vue-bridge.html` beside them.
 
 If it is absent, create it with the CLI. **Never hand-write these files** — the
 CLI pins the dependency to its own version and points the bridge at the matching
 CDN tag, and those two must agree:
 
 ```bash
-npx vueflow init <dir>     # --force to overwrite, --name to override the name
+npx webflow-vue init <dir>     # --force to overwrite, --name to override the name
 npm install
 npm run dev
 ```
 
-It writes `package.json`, `vite.config.js`, `src/main.js`, `vueflow-bridge.html`,
+It writes `package.json`, `vite.config.js`, `src/main.js`, `webflow-vue-bridge.html`,
 `README.md` and `.gitignore`, and refuses to overwrite existing files unless
 forced.
 
-Every reference to `src/main.js` and `vueflow-bridge.html` below means **that
+Every reference to `src/main.js` and `webflow-vue-bridge.html` below means **that
 project's** files.
 
 ### Phase 1 — Discovery
@@ -74,7 +74,7 @@ project's** files.
    - `data_scripts_tool > list_registered_scripts(site_id)`
    - `data_scripts_tool > get_page_script(page_id)` (404 = no scripts yet, fine)
    - `de_page_tool > get_current_page(siteId)` to confirm Designer position
-4. Read the project's `vueflow-bridge.html` for the canonical bridge source.
+4. Read the project's `webflow-vue-bridge.html` for the canonical bridge source.
 5. Read the project's `src/main.js` for current code state.
 
 ### Phase 2 — Plan + Confirm
@@ -94,11 +94,11 @@ Require explicit confirmation before any mutation:
 Skip if `get_page_script(page_id)` already lists the bridge.
 
 1. `data_scripts_tool > add_inline_site_script` — register at site level
-   - `displayName`: alphanumeric only, e.g. `VueflowBridge`
+   - `displayName`: alphanumeric only, e.g. `Webflow VueBridge`
    - `version`: `0.1.0` (increment on conflict)
    - `location`: `footer`
    - `canCopy`: `true`
-   - `sourceCode`: contents of the project's `vueflow-bridge.html` with `<script>` and `<!-- -->` stripped.
+   - `sourceCode`: contents of the project's `webflow-vue-bridge.html` with `<script>` and `<!-- -->` stripped.
      **Replace `SITE_ID`, `STAGING_ASSET_ID` and `PROD_ASSET_ID` first** — the
      scaffolded bridge ships them as placeholders, and a bridge published with
      them intact loads nothing outside `?debug`.
@@ -135,10 +135,10 @@ The `touch` is the trick that ties Webflow publishes to Vite HMR. Without it, th
 
 ### Example 1: Bootstrap a counter island on a fresh page
 
-**User:** "Set up Vueflow on the VUE MCP page of the Accessible Components site."
+**User:** "Set up Webflow Vue on the VUE MCP page of the Accessible Components site."
 
 1. Discovery → no scripts, empty body
-2. Plan: register `VueflowBridge`, insert `<div id="app">{{ count }}</div>` with +1/-1 buttons
+2. Plan: register `Webflow VueBridge`, insert `<div id="app">{{ count }}</div>` with +1/-1 buttons
 3. Wait for "install bridge" + "scaffold"
 4. Register + apply + insert (parallel where possible)
 5. Wait for "publish"
@@ -293,7 +293,7 @@ duplicated item shell per 100 items).
 
 Run this before scaffolding anything. Finsweet Attributes (`list`) already ships
 `combine`, `filter`, `sort`, `load`, `nest`, `pagination`, `select` — no-code and
-free. Vueflow's value is custom logic, not CMS list plumbing. Vueflow is not sold
+free. Webflow Vue's value is custom logic, not CMS list plumbing. Webflow Vue is not sold
 and competes with nothing, so reaching for Finsweet where it fits is the correct
 call, never a concession.
 
@@ -400,7 +400,7 @@ returns null and the mount silently does nothing.
 stays **outside** every island. Vue empties its mount target, so a list inside an
 island becomes a render artifact of the thing meant to read it.
 
-**Rule 8 — styling is never Vueflow's.** `vf-` and `data-vf-` name Vueflow's own
+**Rule 8 — styling is never Webflow Vue's.** `vf-` and `data-vf-` name Webflow Vue's own
 contract — mount ids, behavioural hooks. Presentation classes belong to the
 project's design system. Never invent `vf-card`-style classes.
 
@@ -422,7 +422,7 @@ project's design system. Never invent `vf-card`-style classes.
 - An island renders nothing and the console is silent → mount target existed but
   `setup()` never supplied what the markup asks for. Check the markup ↔ bundle
   contract before anything else.
-- An island renders nothing and no `[vueflow:*]` log appeared at all → the embed
+- An island renders nothing and no `[webflow-vue:*]` log appeared at all → the embed
   or bundle ran before the markup existed. See Rule 6.
 - 404 on `add_page_script` for a freshly created page → the custom-code block
   doesn't exist yet. Use `set_page_scripts` to create it.

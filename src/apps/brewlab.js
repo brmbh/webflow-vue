@@ -37,7 +37,7 @@ const cms = useWebflowCMS();
 const beans = computed(() =>
   (cms.collections.value.beans || []).map((b) => ({ ...b, price: Number(b.price) }))
 );
-console.log(`[vueflow:brewlab] ${beans.value.length} beans parsed from Webflow CMS shell`);
+console.log(`[webflow-vue:brewlab] ${beans.value.length} beans parsed from Webflow CMS shell`);
 
 // --- Island: cart badge (navbar, lives on EVERY Brew Lab page) -------------
 mountIsland('#vf-cart', 'cart-badge', () => {
@@ -69,13 +69,13 @@ mountIsland('#vf-shop', 'shop', () => {
   });
 
   watch([query, roast], () =>
-    console.log(`[vueflow:brewlab] filter q="${query.value}" roast=${roast.value} → ${filtered.value.length} beans`)
+    console.log(`[webflow-vue:brewlab] filter q="${query.value}" roast=${roast.value} → ${filtered.value.length} beans`)
   );
 
   const selectedSlug = computed(() => s.selectedSlug);
   const select = (bean) => {
     s.selectedSlug = bean.slug;
-    console.log(`[vueflow:brewlab] selected "${bean.name}" — configurator + origin islands react`);
+    console.log(`[webflow-vue:brewlab] selected "${bean.name}" — configurator + origin islands react`);
   };
 
   const bannerFor = (bean) => BANNERS[bean.slug] || null;
@@ -118,7 +118,7 @@ mountIsland('#vf-config', 'configurator', () => {
       price: Number(price.value),
     };
     s.cart.push(item);
-    console.log('[vueflow:brewlab] addToCart', item, `→ cart size ${s.cart.length}`);
+    console.log('[webflow-vue:brewlab] addToCart', item, `→ cart size ${s.cart.length}`);
   };
 
   const bagImg = computed(() => BAGS[size.value.label] || null);
@@ -167,9 +167,9 @@ mountIsland('#vf-origin', 'origin', () => {
           wind: Math.round(wx.wind_speed_10m),
           timezone: geo.timezone || `${geo.latitude.toFixed(1)}°, ${geo.longitude.toFixed(1)}°`,
         };
-        console.log(`[vueflow:brewlab] origin weather fetched for ${bean.origin}`, cache[cc]);
+        console.log(`[webflow-vue:brewlab] origin weather fetched for ${bean.origin}`, cache[cc]);
       } catch (err) {
-        console.error('[vueflow:brewlab] origin fetch failed', err);
+        console.error('[webflow-vue:brewlab] origin fetch failed', err);
         info.value = null;
       }
       loading.value = false;

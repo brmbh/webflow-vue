@@ -7,7 +7,7 @@ import { parseItemElement } from './useWebflowCMS.js';
  * Finsweet's `list` solution already solves the Webflow plumbing properly —
  * walking native pagination past the 100-item render cap (`fs-list-load="all"`),
  * combining lists, nesting past the ~5-item limit. Rebuilding that to own it is
- * vanity. What Vueflow wants from it is the finished item set.
+ * vanity. What WebflowVue wants from it is the finished item set.
  *
  * Their public surface (verified against source, @finsweet/attributes 2.7.x):
  *   window.FinsweetAttributes.push(['list', (instances) => …])   — init queue
@@ -81,12 +81,12 @@ export function useFinsweetList({ instance, extractors = {}, timeout = DEFAULT_T
       });
 
       console.log(
-        `[vueflow:finsweet] list "${list.instance ?? '(default)'}" ready — ${entries.value.length} item(s) parsed`
+        `[webflow-vue:finsweet] list "${list.instance ?? '(default)'}" ready — ${entries.value.length} item(s) parsed`
       );
       return list;
     } catch (err) {
       error.value = err;
-      console.error('[vueflow:finsweet] compose path failed', err);
+      console.error('[webflow-vue:finsweet] compose path failed', err);
       return null;
     } finally {
       pending.value = false;

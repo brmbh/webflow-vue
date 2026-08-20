@@ -7,12 +7,12 @@ in `src/` and in `haufe-fjc/src/`.
 
 ## 1. The boundary
 
-**Vueflow owns what is only true because Webflow is underneath. Vue stays Vue.**
+**Webflow Vue owns what is only true because Webflow is underneath. Vue stays Vue.**
 
 The test any proposed export has to pass:
 
-> A Vue developer reads a Vueflow island and sees plain Vue — `setup()`, `ref`,
-> `computed`, composables. Vueflow supplied the mount and the Webflow plumbing,
+> A Vue developer reads a Webflow Vue island and sees plain Vue — `setup()`, `ref`,
+> `computed`, composables. Webflow Vue supplied the mount and the Webflow plumbing,
 > nothing else.
 
 | In | Out |
@@ -21,12 +21,12 @@ The test any proposed export has to pass:
 | Protecting Webflow's runtime from Vue's compiler | Presentation classes or a stylesheet |
 | Reading Webflow CMS out of the DOM | A component library |
 | Cross-island state (forced by islands) | A router, a build tool, an SSR story |
-| The markup ↔ bundle contract | Anything that makes people learn Vueflow instead of Vue |
+| The markup ↔ bundle contract | Anything that makes people learn Webflow Vue instead of Vue |
 
 **No presentation classes ship.** Styling belongs to the Semantic Framework. A
 package that ships CSS is a UI kit, which is a different product.
 
-**Functions, not a class.** There is no instance state to hold. `Vueflow.init()`
+**Functions, not a class.** There is no instance state to hold. `Webflow Vue.init()`
 would be ceremony around three named imports.
 
 ### Alongside Finsweet Attributes — compose, and collaborate
@@ -35,7 +35,7 @@ Established 2026-08-19 by reading their source. Finsweet's `list` package ships
 `combine`, `filter`, `sort`, `load`, `nest`, `pagination`, `tabs`, `select` —
 no-code, free, mature, and internally powered by `@vue/reactivity` ^3.5.13.
 
-This is not a competitive position. Vueflow is the FJC hybrid pattern extracted
+This is not a competitive position. Webflow Vue is the FJC hybrid pattern extracted
 and open-sourced; it isn't sold, so there is no market to defend. Finsweet solved
 the CMS list plumbing well, and reaching for it where it fits is the correct
 engineering call, not a concession. Collaboration is welcome wherever it helps.
@@ -45,7 +45,7 @@ The split that holds:
 | | Owner |
 |---|---|
 | Loading past 100 items, combining lists, nesting past 5, pagination | **Finsweet** |
-| Everything derived from those items, and every interaction | **Vueflow** |
+| Everything derived from those items, and every interaction | **Webflow Vue** |
 
 Their ceiling is that you get the behaviours they shipped, configured by
 attributes. The moment a requirement isn't in the attribute list — pricing that
@@ -189,7 +189,7 @@ they have is six.
 
 ### `useFinsweetList(instance)`
 
-Mirrors a Finsweet Attributes list instance into a Vueflow shared store, so
+Mirrors a Finsweet Attributes list instance into a Webflow Vue shared store, so
 islands can read and drive a list that Finsweet owns.
 
 ```js
@@ -277,9 +277,9 @@ What survives is a genuine disagreement.
 expose. Precise enough to fix without a debugger:
 
 ```
-[vueflow:contract] "configurator" — markup calls hasSequenceConflict(), which this
+[webflow-vue:contract] "configurator" — markup calls hasSequenceConflict(), which this
   bundle does not expose. Exposed: courses, selected, total, hasSelectionWarning.
-  3 elements affected. Run `npx vueflow verify` before deploying.
+  3 elements affected. Run `npx webflow-vue verify` before deploying.
 ```
 
 **Layer 2 — degrade correctly.** The audit knows the usage, so the fallback can
@@ -297,12 +297,12 @@ the audit tells it what shape to return.
 **Layer 3 — canary.** `verifyMount(el, label)`: if a mount produced no children,
 say so loudly. Catches whatever the first two layers miss.
 
-**Layer 4 — pre-deploy.** `npx vueflow verify` runs **the same scanner** against
+**Layer 4 — pre-deploy.** `npx webflow-vue verify` runs **the same scanner** against
 published pages in CI. One definition of "the contract", not two implementations
 that drift apart.
 
 ```
-npx vueflow verify --site <id> --pages /brew-lab,/vue/simple
+npx webflow-vue verify --site <id> --pages /brew-lab,/vue/simple
 ```
 
 Fetches published markup, loads the built bundle, diffs, exits non-zero on
@@ -315,7 +315,7 @@ mismatch. This is the layer that would have caught 2026-08-11 before deploy.
   `reportingWarnHandler` already does this — lift it.)
 - `errorHandler` always reports, with island label and lifecycle phase.
 - `configure({ onError })` pipes both to Sentry or anywhere else.
-- All console output stays prefixed `[vueflow:*]`.
+- All console output stays prefixed `[webflow-vue:*]`.
 
 ---
 
@@ -351,7 +351,7 @@ A package asserting stale workarounds is worse than no package, because people
 stop checking. So:
 
 - every rule carries the date and the observation that established it
-- `npx vueflow doctor` re-verifies each rule against a live Webflow site by
+- `npx webflow-vue doctor` re-verifies each rule against a live Webflow site by
   building a probe page, publishing, fetching, and asserting. `/vue/simple` is
   already the shape of that probe.
 
@@ -360,10 +360,10 @@ stop checking. So:
 ## 5. CLI
 
 ```
-npx vueflow init      # scaffold config + install the agent skill into .claude/skills
-npx vueflow verify    # diff published markup against the built bundle (CI gate)
-npx vueflow doctor    # re-verify the §4 rules against live Webflow behaviour
-npx vueflow deploy    # build → upload .txt asset → bump bridge → apply → publish
+npx webflow-vue init      # scaffold config + install the agent skill into .claude/skills
+npx webflow-vue verify    # diff published markup against the built bundle (CI gate)
+npx webflow-vue doctor    # re-verify the §4 rules against live Webflow behaviour
+npx webflow-vue deploy    # build → upload .txt asset → bump bridge → apply → publish
 ```
 
 `deploy` automates the loop currently written out by hand in the vault dashboard.

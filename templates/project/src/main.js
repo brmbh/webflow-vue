@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue';
-import { mountIsland } from 'vueflow';
+import { mountIsland } from 'webflow-vue';
 
 /**
  * One island per interactive region. Everything outside an island stays

@@ -1,6 +1,6 @@
 {
-  "name": "vueflow",
-  "version": "0.0.2",
+  "name": "webflow-vue",
+  "version": "0.0.3",
   "type": "module",
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.3",
@@ -14,10 +14,10 @@
   "description": "Vue 3 islands on Webflow-rendered DOM — mount, shared state, and CMS parsing, with no build step required.",
   "license": "MIT",
   "author": "Jan Brombach",
-  "homepage": "https://github.com/brmbh/vueflow",
+  "homepage": "https://github.com/brmbh/webflow-vue",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/brmbh/vueflow.git"
+    "url": "git+https://github.com/brmbh/webflow-vue.git"
   },
   "keywords": [
     "webflow",
@@ -28,20 +28,20 @@
     "hybrid",
     "agentic"
   ],
-  "main": "./dist/vueflow.esm.js",
-  "module": "./dist/vueflow.esm.js",
-  "unpkg": "./dist/vueflow.global.js",
-  "jsdelivr": "./dist/vueflow.global.js",
+  "main": "./dist/webflow-vue.esm.js",
+  "module": "./dist/webflow-vue.esm.js",
+  "unpkg": "./dist/webflow-vue.global.js",
+  "jsdelivr": "./dist/webflow-vue.global.js",
   "exports": {
     ".": {
-      "import": "./dist/vueflow.esm.js",
-      "default": "./dist/vueflow.global.js"
+      "import": "./dist/webflow-vue.esm.js",
+      "default": "./dist/webflow-vue.global.js"
     }
   },
   "files": [
     "bin",
-    "dist/vueflow.global.js",
-    "dist/vueflow.esm.js",
+    "dist/webflow-vue.global.js",
+    "dist/webflow-vue.esm.js",
     "src/cli",
     "templates",
     "skills",
@@ -62,6 +62,6 @@
     "build:lib": "vite build --mode lib"
   },
   "bin": {
-    "vueflow": "bin/vueflow.js"
+    "webflow-vue": "bin/webflow-vue.js"
   }
 }

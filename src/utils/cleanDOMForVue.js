@@ -23,11 +23,11 @@ export function cleanDOMForVue(rootEl, label = rootEl.id || 'island') {
 
   if (rescued.length || dropped.length) {
     console.log(
-      `[vueflow:clean] "${label}" swept before mount — rescued ${rescued.length} w-json config(s), stripped ${dropped.length} <style> block(s)`,
+      `[webflow-vue:clean] "${label}" swept before mount — rescued ${rescued.length} w-json config(s), stripped ${dropped.length} <style> block(s)`,
       { dropped }
     );
   } else {
-    console.log(`[vueflow:clean] "${label}" clean — no Webflow runtime nodes inside mount target`);
+    console.log(`[webflow-vue:clean] "${label}" clean — no Webflow runtime nodes inside mount target`);
   }
 
   return {
@@ -36,7 +36,7 @@ export function cleanDOMForVue(rootEl, label = rootEl.id || 'island') {
     restore() {
       for (const node of rescued) rootEl.appendChild(node);
       if (rescued.length) {
-        console.log(`[vueflow:clean] "${label}" restored ${rescued.length} rescued node(s) post-mount`);
+        console.log(`[webflow-vue:clean] "${label}" restored ${rescued.length} rescued node(s) post-mount`);
       }
     },
   };

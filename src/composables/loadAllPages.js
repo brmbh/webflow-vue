@@ -64,7 +64,7 @@ function tokensIn(root) {
 export async function loadAllPages(collections, { extractors = {}, root = document, maxPages = 50 } = {}) {
   const tokens = tokensIn(root);
   if (!tokens.length) {
-    console.log('[vueflow:pages] no pagination on this page — nothing to walk');
+    console.log('[webflow-vue:pages] no pagination on this page — nothing to walk');
     return { pagesFetched: 0, added: {} };
   }
 
@@ -100,7 +100,7 @@ export async function loadAllPages(collections, { extractors = {}, root = docume
 
   collections.value = merged;
   console.log(
-    `[vueflow:pages] walked ${pagesFetched} page(s), added`,
+    `[webflow-vue:pages] walked ${pagesFetched} page(s), added`,
     added,
     '→ totals',
     Object.fromEntries(Object.entries(merged).map(([k, v]) => [k, v.length]))

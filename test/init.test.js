@@ -6,12 +6,12 @@ import { init } from '../src/cli/init.js';
 
 let dir;
 beforeEach(() => {
-  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vueflow-init-'));
+  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'webflow-vue-init-'));
 });
 
 const read = (rel) => fs.readFileSync(path.join(dir, rel), 'utf8');
 
-describe('vueflow init', () => {
+describe('webflow-vue init', () => {
   it('writes a complete project', () => {
     const { written } = init(dir, { version: '1.2.3' });
     expect(written).toEqual([
@@ -20,7 +20,7 @@ describe('vueflow init', () => {
       'package.json',
       'src/main.js',
       'vite.config.js',
-      'vueflow-bridge.html',
+      'webflow-vue-bridge.html',
     ]);
   });
 
@@ -37,13 +37,13 @@ describe('vueflow init', () => {
 
   it('pins the dependency to the running CLI version', () => {
     init(dir, { version: '1.2.3' });
-    expect(JSON.parse(read('package.json')).dependencies.vueflow).toBe('^1.2.3');
+    expect(JSON.parse(read('package.json')).dependencies['webflow-vue']).toBe('^1.2.3');
   });
 
   it('points the bridge at the matching CDN tag', () => {
     init(dir, { version: '1.2.3' });
-    expect(read('vueflow-bridge.html')).toContain("var VUEFLOW_VERSION = '1.2.3'");
-    expect(read('vueflow-bridge.html')).toContain('cdn.jsdelivr.net/npm/vueflow@');
+    expect(read('webflow-vue-bridge.html')).toContain("var WEBFLOW_VUE_VERSION = '1.2.3'");
+    expect(read('webflow-vue-bridge.html')).toContain('cdn.jsdelivr.net/npm/webflow-vue@');
   });
 
   it('leaves no unsubstituted placeholders anywhere', () => {
@@ -53,11 +53,11 @@ describe('vueflow init', () => {
     }
   });
 
-  it('externalizes both vue and vueflow so the bundle stays app-only', () => {
+  it('externalizes both vue and webflow-vue so the bundle stays app-only', () => {
     init(dir, { version: '1.2.3' });
     const config = read('vite.config.js');
-    expect(config).toContain("external: ['vue', 'vueflow']");
-    expect(config).toContain("globals: { vue: 'Vue', vueflow: 'Vueflow' }");
+    expect(config).toContain("external: ['vue', 'webflow-vue']");
+    expect(config).toContain("globals: { vue: 'Vue', 'webflow-vue': 'WebflowVue' }");
   });
 
   it('refuses to overwrite an existing project', () => {

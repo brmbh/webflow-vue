@@ -9,7 +9,7 @@ import { reactive, watch } from 'vue';
  * (and pages, since the bundle is site-wide).
  */
 
-const STORAGE_PREFIX = 'vueflow:store:';
+const STORAGE_PREFIX = 'webflow-vue:store:';
 const registry = new Map();
 
 function hydrate(name) {
@@ -17,10 +17,10 @@ function hydrate(name) {
     const raw = sessionStorage.getItem(STORAGE_PREFIX + name);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    console.log(`[vueflow:store] "${name}" hydrated from sessionStorage`, parsed);
+    console.log(`[webflow-vue:store] "${name}" hydrated from sessionStorage`, parsed);
     return parsed;
   } catch (err) {
-    console.warn(`[vueflow:store] "${name}" hydration failed — starting fresh`, err);
+    console.warn(`[webflow-vue:store] "${name}" hydration failed — starting fresh`, err);
     return null;
   }
 }
@@ -37,7 +37,7 @@ export function useSharedStore(name = 'default', initialState = {}, options = {}
   const { persist = false } = options;
 
   if (registry.has(name)) {
-    console.log(`[vueflow:store] "${name}" → existing instance reused (cross-island link established)`);
+    console.log(`[webflow-vue:store] "${name}" → existing instance reused (cross-island link established)`);
     return registry.get(name);
   }
 
@@ -45,18 +45,18 @@ export function useSharedStore(name = 'default', initialState = {}, options = {}
   const store = reactive({ ...initialState, ...persisted });
   registry.set(name, store);
 
-  console.log(`[vueflow:store] "${name}" created`, JSON.parse(JSON.stringify(store)), { persist });
+  console.log(`[webflow-vue:store] "${name}" created`, JSON.parse(JSON.stringify(store)), { persist });
 
   watch(
     store,
     (state) => {
       const snapshot = JSON.parse(JSON.stringify(state));
-      console.log(`[vueflow:store] "${name}" mutated →`, snapshot);
+      console.log(`[webflow-vue:store] "${name}" mutated →`, snapshot);
       if (!persist) return;
       try {
         sessionStorage.setItem(STORAGE_PREFIX + name, JSON.stringify(snapshot));
       } catch (err) {
-        console.warn(`[vueflow:store] "${name}" persist failed`, err);
+        console.warn(`[webflow-vue:store] "${name}" persist failed`, err);
       }
     },
     { deep: true }
@@ -68,5 +68,5 @@ export function useSharedStore(name = 'default', initialState = {}, options = {}
 /** Wipe a persisted store (debug helper, callable from the console). */
 export function resetSharedStore(name = 'default') {
   sessionStorage.removeItem(STORAGE_PREFIX + name);
-  console.log(`[vueflow:store] "${name}" sessionStorage cleared — reload to re-init`);
+  console.log(`[webflow-vue:store] "${name}" sessionStorage cleared — reload to re-init`);
 }

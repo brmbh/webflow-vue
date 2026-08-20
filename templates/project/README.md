@@ -1,6 +1,6 @@
 # __PROJECT_NAME__
 
-A Vueflow project: Vue 3 islands mounted on Webflow-rendered DOM.
+A Webflow Vue project: Vue 3 islands mounted on Webflow-rendered DOM.
 
 ## Develop
 
@@ -19,11 +19,11 @@ npm run build   # dist/main.js
 ```
 
 Upload `dist/main.js` to Webflow assets **renamed to `bundle.txt`** (Webflow
-rejects `.js`), then put its asset id into `vueflow-bridge.html`.
+rejects `.js`), then put its asset id into `webflow-vue-bridge.html`.
 
 ## The bridge
 
-`vueflow-bridge.html` goes into the Webflow page's custom code, **page level
+`webflow-vue-bridge.html` goes into the Webflow page's custom code, **page level
 only** — site level plus page level mounts Vue twice.
 
 ## Writing islands
@@ -39,4 +39,4 @@ Rules that are not guessable, and cost real debugging time to find:
 - A code embed's scripts run at parse time, so an embed must sit **after** every
   island it mounts.
 
-`npx skills add brmbh/vueflow` installs the agent skill that knows all of them.
+`npx skills add brmbh/webflow-vue` installs the agent skill that knows all of them.

@@ -1,10 +1,10 @@
 {
-  "name": "vueflow",
-  "description": "Agent skills for Vueflow — Vue islands on Webflow-rendered DOM",
+  "name": "webflow-vue",
+  "description": "Agent skills for WebflowVue — Vue islands on Webflow-rendered DOM",
   "skills": [
     {
-      "name": "vueflow-scaffold",
-      "path": "skills/vueflow-scaffold"
+      "name": "webflow-vue-scaffold",
+      "path": "skills/webflow-vue-scaffold"
     }
   ]
 }

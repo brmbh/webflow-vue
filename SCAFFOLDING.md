@@ -1,6 +1,6 @@
-# Vueflow Scaffolding Workflow
+# Webflow Vue Scaffolding Workflow
 
-The steps we ran to get a Vue-on-Webflow hybrid round-trip working end-to-end. Captures the **exact MCP calls, the constraints we hit, and the gotchas worth remembering**. Use as a checklist when bootstrapping a new Webflow page or a new Vueflow demo. Operationalised in the companion skill at `.claude/skills/vueflow-scaffold/SKILL.md`.
+The steps we ran to get a Vue-on-Webflow hybrid round-trip working end-to-end. Captures the **exact MCP calls, the constraints we hit, and the gotchas worth remembering**. Use as a checklist when bootstrapping a new Webflow page or a new Webflow Vue demo. Operationalised in the companion skill at `.claude/skills/webflow-vue-scaffold/SKILL.md`.
 
 ---
 
@@ -62,7 +62,7 @@ Expect 404s on `list_applied_scripts` and `get_page_script` if the page has no c
 data_scripts_tool > add_inline_site_script {
   site_id,
   request: {
-    displayName: "VueflowBridge",   // alphanumeric only, 1-50 chars (NO hyphens)
+    displayName: "Webflow VueBridge",   // alphanumeric only, 1-50 chars (NO hyphens)
     version: "0.1.0",
     location: "footer",
     canCopy: true,
@@ -95,7 +95,7 @@ Should return the registered script.
 - **2000-char limit** on inline source code → keep the bridge tight
 - **No `<script>` tags** in `sourceCode` — Webflow wraps it itself
 - **No external `<script src=...>`** — that's why the bridge injects Vue dynamically via `addScript()` rather than as a separate tag
-- **`displayName` must be alphanumeric only** — no hyphens, dots, or underscores. `VueflowBridge` works; `vueflow-bridge` will reject.
+- **`displayName` must be alphanumeric only** — no hyphens, dots, or underscores. `Webflow VueBridge` works; `vueflow-bridge` will reject.
 - Page-level scripts can't be installed directly with raw source. They reference site-registered scripts by ID. Always register first, then `upsert_page_script`.
 
 ---
@@ -246,7 +246,7 @@ element_builder > {
 
 ## Companion skill
 
-The procedure above is operationalised in `.claude/skills/vueflow-scaffold/SKILL.md`. The skill orchestrates the same phases with explicit confirmation gates ("install bridge", "scaffold", "publish") and ties the publish step to a `touch src/main.js` so Vite HMR auto-reloads the live `?debug` page.
+The procedure above is operationalised in `.claude/skills/webflow-vue-scaffold/SKILL.md`. The skill orchestrates the same phases with explicit confirmation gates ("install bridge", "scaffold", "publish") and ties the publish step to a `touch src/main.js` so Vite HMR auto-reloads the live `?debug` page.
 
 This MD remains the human-readable narrative and the SOT for the gotchas — the skill references it.
 

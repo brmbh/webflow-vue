@@ -1,5 +1,5 @@
 /**
- * Vueflow — public library surface.
+ * WebflowVue — public library surface.
  *
  * This is the entry point for consumers: the npm package and the CDN build.
  * It exports helpers only and mounts nothing. The demo apps under `src/apps/`
@@ -28,4 +28,4 @@ export { useFinsweetList, hasFinsweetList } from './composables/useFinsweetList.
 // Field extractors for the CMS parsers
 export * as extractors from './extractors.js';
 
-export const version = '0.0.2';
+export const version = '0.0.3';

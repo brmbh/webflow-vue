@@ -23,7 +23,7 @@ function walk(dir, base = dir) {
 }
 
 /**
- * Scaffold a Vueflow project. Deterministic and idempotent-by-refusal: it never
+ * Scaffold a WebflowVue project. Deterministic and idempotent-by-refusal: it never
  * overwrites an existing file unless `force` is set, and reports what it wrote.
  */
 export function init(targetDir, { version, force = false, name } = {}) {
@@ -31,7 +31,7 @@ export function init(targetDir, { version, force = false, name } = {}) {
     throw new Error(`template directory missing at ${TEMPLATE}`);
   }
   const dest = path.resolve(targetDir);
-  const projectName = name || path.basename(dest) || 'vueflow-project';
+  const projectName = name || path.basename(dest) || 'webflow-vue-project';
 
   const files = walk(TEMPLATE).map((rel) => ({ rel, out: targetName(rel) }));
 
@@ -52,8 +52,8 @@ export function init(targetDir, { version, force = false, name } = {}) {
     const body = fs
       .readFileSync(path.join(TEMPLATE, rel), 'utf8')
       .replaceAll('__PROJECT_NAME__', projectName)
-      .replaceAll('__VUEFLOW_VERSION_EXACT__', version)
-      .replaceAll('__VUEFLOW_VERSION__', `^${version}`);
+      .replaceAll('__WEBFLOW_VUE_VERSION_EXACT__', version)
+      .replaceAll('__WEBFLOW_VUE_VERSION__', `^${version}`);
     const outPath = path.join(dest, out);
     fs.mkdirSync(path.dirname(outPath), { recursive: true });
     fs.writeFileSync(outPath, body);

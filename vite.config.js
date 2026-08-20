@@ -37,10 +37,10 @@ export default defineConfig(({ command, mode }) => ({
           emptyOutDir: false,
           lib: {
             entry: './src/index.js',
-            name: 'Vueflow',
+            name: 'WebflowVue',
             formats: ['iife', 'es'],
             fileName: (format) =>
-              format === 'iife' ? 'vueflow.global.js' : 'vueflow.esm.js',
+              format === 'iife' ? 'webflow-vue.global.js' : 'webflow-vue.esm.js',
           },
           rollupOptions: {
             external: ['vue'],

@@ -1,4 +1,4 @@
-# Vueflow — public launch plan
+# Webflow Vue — public launch plan
 
 Target: skill + package shippable — date reopened 2026-08-19, see RESUME.
 Written 2026-08-16.
@@ -42,8 +42,8 @@ Jan: helpers → installable package → CMS → wireframe → Figma → record.
 
 | | |
 |---|---|
-| npm | **`vueflow`** — unscoped. Flagship packages go unscoped (`vite`, `vitest`, `prettier`); scopes are for satellites. Name verified available 2026-08-16. |
-| GitHub | **`brmbh/vueflow`** — brmbh pivots from "agentic WordPress suite" to general agentic tool supply. Needs a one-line rebrand on `brmbh/site`. |
+| npm | **`webflow-vue`** — unscoped. **Superseded 2026-08-20:** `vueflow` was unclaimed but npm rejects it as too similar to `vue-flow`, and `@vue-flow/core` (vueflow.dev) is an established Vue library, so the name collided in the ecosystem as well as the registry. |
+| GitHub | **`brmbh/webflow-vue`** — brmbh pivots from "agentic WordPress suite" to general agentic tool supply. Needs a one-line rebrand on `brmbh/site`. |
 | Structure | **One package with a `bin`.** No separate CLI package — no version coordination for zero benefit. |
 | `doctor` target | jan-blank-sandbox for our runs; `--site` flag for users. |
 
@@ -78,7 +78,7 @@ pre-existing work — untouched.
 
 | # | Decision | Options | My recommendation |
 |---|---|---|---|
-| 1 | npm name | `vueflow` · `@vueflow/core` · `@brmbh/vueflow` — **all four checked, all available** | `@vueflow/core`, scope reserved now. Room for `@vueflow/cli` later without renaming. |
+| 1 | npm name | `vueflow` · `@vueflow/core` · `@brmbh/webflow-vue` — **all four checked, all available** | `@vueflow/core`, scope reserved now. Room for `@vueflow/cli` later without renaming. |
 | 2 | GitHub repo | `Schmandarine/vueflow` public · private-then-flip | Public from the first commit. History is clean; nothing to hide. |
 | 3 | `doctor` target site | jan-blank-sandbox · a throwaway site | Sandbox for our runs; `doctor` takes `--site` so users point it at their own. |
 
@@ -91,8 +91,8 @@ Everything below assumes yes to all three. Say otherwise and I adjust.
 **Ships:**
 
 - `@vueflow/core` — `mountIsland`, `useSharedStore`, `useWebflowCMS`, `cleanDOMForVue`, `auditContract`, `verifyMount`, `configure`
-- `npx vueflow` — `init`, `doctor`, `verify`
-- `vueflow-scaffold` skill, rules dated and attributed
+- `npx webflow-vue` — `init`, `doctor`, `verify`
+- `webflow-vue-scaffold` skill, rules dated and attributed
 - Two live examples + one local harness
 - README, LICENSE, CHANGELOG
 
@@ -140,7 +140,7 @@ Fixtures = HTML snippet + exposed keys + expected findings. Must-cover cases:
 
 ### Loop C — Webflow behaviour rules (minutes, live, the anti-rot loop)
 
-`npx vueflow doctor` — the loop that keeps the package from silently rotting as
+`npx webflow-vue doctor` — the loop that keeps the package from silently rotting as
 Webflow changes. For each rule in the skill, build a probe on a scratch page,
 publish, fetch the **published** HTML, assert.
 
@@ -164,7 +164,7 @@ Fetch the published page in jsdom, load the bundle, mount, drive it:
 
 - click `+` → island 1 shows `2`
 - island 2's derived total updates to `€98` without island 2 knowing island 1 exists
-- console carries zero `[vueflow:contract]` errors
+- console carries zero `[webflow-vue:contract]` errors
 
 **Green:** passes against the real published URL.
 
@@ -186,7 +186,7 @@ then assert the produced page mechanically — the same assertions as Loop C.
 
 `vueflow verify` is **not** a second implementation. It is Loop D's harness
 pointed at any page: fetch published HTML → jsdom → load bundle → let
-`mountIsland` run its normal audit → collect `[vueflow:contract]` output → exit
+`mountIsland` run its normal audit → collect `[webflow-vue:contract]` output → exit
 non-zero if non-empty.
 
 One scanner, three surfaces: browser console, CI gate, `doctor`. No drift
