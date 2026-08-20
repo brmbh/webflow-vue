@@ -1,7 +1,6 @@
 {
   "name": "vueflow",
-  "private": true,
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.3",

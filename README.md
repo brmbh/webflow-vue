@@ -4,7 +4,7 @@ Vue 3 islands on Webflow-rendered DOM. Webflow owns the markup and the styling;
 Vue owns the behaviour. No build step required, and no page-wide takeover — the
 rest of the page stays untouched Webflow, with its own runtime intact.
 
-> **Status: `0.0.1`, unstable.** The API still moves. Pin a tag; expect
+> **Status: `0.0.2`, unstable.** The API still moves. Pin a tag; expect
 > signatures to change before `0.1.0`.
 
 ## Quick start — two script tags
@@ -13,7 +13,7 @@ Paste into your Webflow page's **custom code (head)**:
 
 ```html
 <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/brmbh/vueflow@v0.0.1/dist/vueflow.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vueflow@0.0.2/dist/vueflow.global.js"></script>
 ```
 
 Give any element an id — that is your island. Then add an **embed placed after

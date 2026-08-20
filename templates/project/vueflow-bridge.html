@@ -30,7 +30,7 @@
     document.body.appendChild(s);
   }
 
-  var VUEFLOW_VERSION = '__VUEFLOW_VERSION_TAG__';
+  var VUEFLOW_VERSION = '__VUEFLOW_VERSION_EXACT__';
   var url = new URL(window.location);
   var debug = url.searchParams.get('debug') !== null;
 
@@ -44,7 +44,7 @@
   } else {
     var VUE_CDN = 'https://unpkg.com/vue@3/dist/vue.global.prod.js';
     var VUEFLOW_CDN =
-      'https://cdn.jsdelivr.net/gh/brmbh/vueflow@' + VUEFLOW_VERSION + '/dist/vueflow.global.js';
+      'https://cdn.jsdelivr.net/npm/vueflow@' + VUEFLOW_VERSION + '/dist/vueflow.global.js';
 
     addScript(VUE_CDN, false, function () {
       addScript(VUEFLOW_CDN, false, function () {

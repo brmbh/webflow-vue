@@ -42,7 +42,8 @@ describe('vueflow init', () => {
 
   it('points the bridge at the matching CDN tag', () => {
     init(dir, { version: '1.2.3' });
-    expect(read('vueflow-bridge.html')).toContain("var VUEFLOW_VERSION = 'v1.2.3'");
+    expect(read('vueflow-bridge.html')).toContain("var VUEFLOW_VERSION = '1.2.3'");
+    expect(read('vueflow-bridge.html')).toContain('cdn.jsdelivr.net/npm/vueflow@');
   });
 
   it('leaves no unsubstituted placeholders anywhere', () => {
@@ -71,5 +72,15 @@ describe('vueflow init', () => {
     fs.writeFileSync(path.join(dir, 'src', 'main.js'), '// my work');
     init(dir, { version: '1.2.3', force: true });
     expect(read('src/main.js')).toContain('mountIsland');
+  });
+});
+
+describe('package metadata', () => {
+  it('keeps the exported version in step with package.json', async () => {
+    // vitest runs from the project root; import.meta.url is not a file: URL
+    // under the jsdom environment.
+    const pkg = JSON.parse(fs.readFileSync(path.resolve('package.json'), 'utf8'));
+    const lib = await import('../src/index.js');
+    expect(lib.version).toBe(pkg.version);
   });
 });

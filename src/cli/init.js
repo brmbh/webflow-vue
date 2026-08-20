@@ -52,7 +52,7 @@ export function init(targetDir, { version, force = false, name } = {}) {
     const body = fs
       .readFileSync(path.join(TEMPLATE, rel), 'utf8')
       .replaceAll('__PROJECT_NAME__', projectName)
-      .replaceAll('__VUEFLOW_VERSION_TAG__', `v${version}`)
+      .replaceAll('__VUEFLOW_VERSION_EXACT__', version)
       .replaceAll('__VUEFLOW_VERSION__', `^${version}`);
     const outPath = path.join(dest, out);
     fs.mkdirSync(path.dirname(outPath), { recursive: true });

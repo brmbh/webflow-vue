@@ -28,4 +28,4 @@ export { useFinsweetList, hasFinsweetList } from './composables/useFinsweetList.
 // Field extractors for the CMS parsers
 export * as extractors from './extractors.js';
 
-export const version = '0.0.1';
+export const version = '0.0.2';

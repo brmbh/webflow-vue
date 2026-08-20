@@ -20,7 +20,7 @@ and none of the phases below apply. Hand them this and stop:
 
 ```html
 <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/brmbh/vueflow@v0.0.1/dist/vueflow.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vueflow@0.0.2/dist/vueflow.global.js"></script>
 ```
 
 **Route 2 — a project.** Code that wants version control, a build step, real
