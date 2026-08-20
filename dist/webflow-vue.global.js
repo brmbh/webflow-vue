@@ -2,30 +2,32 @@ var WebflowVue = function(exports, vue) {
   "use strict";
   function cleanDOMForVue(rootEl, label = rootEl.id || "island") {
     const rescued = [];
-    const dropped = [];
-    for (const node of rootEl.querySelectorAll('script.w-json, script[type="application/json"]')) {
+    for (const node of rootEl.querySelectorAll(
+      'script.w-json, script[type="application/json"], style'
+    )) {
       rescued.push(node);
       node.remove();
     }
-    for (const node of rootEl.querySelectorAll("style")) {
-      dropped.push(node.textContent.slice(0, 60));
-      node.remove();
-    }
-    if (rescued.length || dropped.length) {
+    if (rescued.length) {
+      const counts = rescued.reduce((acc, n) => {
+        const kind = n.tagName === "STYLE" ? "style" : "w-json";
+        acc[kind] = (acc[kind] || 0) + 1;
+        return acc;
+      }, {});
       console.log(
-        `[webflow-vue:clean] "${label}" swept before mount — rescued ${rescued.length} w-json config(s), stripped ${dropped.length} <style> block(s)`,
-        { dropped }
+        `[webflow-vue:clean] "${label}" swept ${rescued.length} node(s) before mount — restored after`,
+        counts
       );
     } else {
       console.log(`[webflow-vue:clean] "${label}" clean — no Webflow runtime nodes inside mount target`);
     }
     return {
       rescuedCount: rescued.length,
-      /** Re-attach rescued config nodes after Vue has taken over the subtree. */
+      /** Re-attach rescued nodes after Vue has taken over the subtree. */
       restore() {
         for (const node of rescued) rootEl.appendChild(node);
         if (rescued.length) {
-          console.log(`[webflow-vue:clean] "${label}" restored ${rescued.length} rescued node(s) post-mount`);
+          console.log(`[webflow-vue:clean] "${label}" restored ${rescued.length} node(s) post-mount`);
         }
       }
     };
@@ -416,7 +418,7 @@ var WebflowVue = function(exports, vue) {
     number,
     richText
   }, Symbol.toStringTag, { value: "Module" }));
-  const version = "0.0.5";
+  const version = "0.0.6";
   exports.cleanDOMForVue = cleanDOMForVue;
   exports.clearCollectionCache = clearCollectionCache;
   exports.extractors = extractors;

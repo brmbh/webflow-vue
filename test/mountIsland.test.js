@@ -181,3 +181,17 @@ describe('mountIsland accepts an element', () => {
     expect(document.querySelector('.card span').textContent).toBe('4');
   });
 });
+
+describe('style blocks inside an island', () => {
+  it('survives the mount — a Webflow custom-style embed is not destroyed', () => {
+    document.body.innerHTML =
+      '<div id="island">' +
+      '<div class="custom-style w-embed"><style>.x { color: red }</style></div>' +
+      '<span>{{ n }}</span></div>';
+    expect(document.querySelectorAll('style')).toHaveLength(1);
+    mountIsland('#island', 'styled', () => ({ n: ref(1) }));
+    expect(document.querySelectorAll('style')).toHaveLength(1);
+    expect(document.querySelector('style').textContent).toBe('.x { color: red }');
+    expect(document.querySelector('#island span').textContent).toBe('1');
+  });
+});
