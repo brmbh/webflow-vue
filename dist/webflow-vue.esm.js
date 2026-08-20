@@ -30,8 +30,9 @@ function cleanDOMForVue(rootEl, label = rootEl.id || "island") {
   };
 }
 const mounted = /* @__PURE__ */ new WeakMap();
-function mountIsland(selector, label, setup) {
-  const root = document.querySelector(selector);
+function mountIsland(target, label, setup, index = 0) {
+  const root = typeof target === "string" ? document.querySelector(target) : target;
+  const selector = typeof target === "string" ? target : "<element>";
   if (!root) {
     console.log(`[webflow-vue:island] "${label}" skipped — ${selector} not on this page`);
     return null;
@@ -42,7 +43,7 @@ function mountIsland(selector, label, setup) {
   }
   const t0 = performance.now();
   const sweep = cleanDOMForVue(root, label);
-  const app = createApp({ setup });
+  const app = createApp({ setup: () => setup(root, index) });
   app.config.errorHandler = (err, _vm, info) => console.error(`[webflow-vue:island] "${label}" runtime error (${info})`, err);
   app.mount(root);
   sweep.restore();
@@ -59,6 +60,16 @@ function unmountIsland(selector) {
   mounted.delete(root);
   console.log(`[webflow-vue:island] unmounted ${typeof selector === "string" ? selector : "element"}`);
   return true;
+}
+function mountIslands(selector, label, setup) {
+  const roots = [...document.querySelectorAll(selector)];
+  if (!roots.length) {
+    console.log(`[webflow-vue:island] "${label}" skipped — nothing matches ${selector}`);
+    return [];
+  }
+  const apps = roots.map((root, i) => mountIsland(root, `${label}[${i}]`, setup, i)).filter(Boolean);
+  console.log(`[webflow-vue:island] "${label}" mounted on ${apps.length}/${roots.length} match(es) of ${selector}`);
+  return apps;
 }
 const STORAGE_PREFIX = "webflow-vue:store:";
 const registry = /* @__PURE__ */ new Map();
@@ -404,7 +415,7 @@ const extractors = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePr
   number,
   richText
 }, Symbol.toStringTag, { value: "Module" }));
-const version = "0.0.4";
+const version = "0.0.5";
 export {
   cleanDOMForVue,
   clearCollectionCache,
@@ -414,6 +425,7 @@ export {
   loadAllPages,
   loadDocument,
   mountIsland,
+  mountIslands,
   parseItemElement,
   resetSharedStore,
   unmountIsland,

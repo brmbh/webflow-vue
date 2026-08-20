@@ -31,8 +31,9 @@ var WebflowVue = function(exports, vue) {
     };
   }
   const mounted = /* @__PURE__ */ new WeakMap();
-  function mountIsland(selector, label, setup) {
-    const root = document.querySelector(selector);
+  function mountIsland(target, label, setup, index = 0) {
+    const root = typeof target === "string" ? document.querySelector(target) : target;
+    const selector = typeof target === "string" ? target : "<element>";
     if (!root) {
       console.log(`[webflow-vue:island] "${label}" skipped — ${selector} not on this page`);
       return null;
@@ -43,7 +44,7 @@ var WebflowVue = function(exports, vue) {
     }
     const t0 = performance.now();
     const sweep = cleanDOMForVue(root, label);
-    const app = vue.createApp({ setup });
+    const app = vue.createApp({ setup: () => setup(root, index) });
     app.config.errorHandler = (err, _vm, info) => console.error(`[webflow-vue:island] "${label}" runtime error (${info})`, err);
     app.mount(root);
     sweep.restore();
@@ -60,6 +61,16 @@ var WebflowVue = function(exports, vue) {
     mounted.delete(root);
     console.log(`[webflow-vue:island] unmounted ${typeof selector === "string" ? selector : "element"}`);
     return true;
+  }
+  function mountIslands(selector, label, setup) {
+    const roots = [...document.querySelectorAll(selector)];
+    if (!roots.length) {
+      console.log(`[webflow-vue:island] "${label}" skipped — nothing matches ${selector}`);
+      return [];
+    }
+    const apps = roots.map((root, i) => mountIsland(root, `${label}[${i}]`, setup, i)).filter(Boolean);
+    console.log(`[webflow-vue:island] "${label}" mounted on ${apps.length}/${roots.length} match(es) of ${selector}`);
+    return apps;
   }
   const STORAGE_PREFIX = "webflow-vue:store:";
   const registry = /* @__PURE__ */ new Map();
@@ -405,7 +416,7 @@ var WebflowVue = function(exports, vue) {
     number,
     richText
   }, Symbol.toStringTag, { value: "Module" }));
-  const version = "0.0.4";
+  const version = "0.0.5";
   exports.cleanDOMForVue = cleanDOMForVue;
   exports.clearCollectionCache = clearCollectionCache;
   exports.extractors = extractors;
@@ -414,6 +425,7 @@ var WebflowVue = function(exports, vue) {
   exports.loadAllPages = loadAllPages;
   exports.loadDocument = loadDocument;
   exports.mountIsland = mountIsland;
+  exports.mountIslands = mountIslands;
   exports.parseItemElement = parseItemElement;
   exports.resetSharedStore = resetSharedStore;
   exports.unmountIsland = unmountIsland;

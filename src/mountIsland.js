@@ -20,8 +20,9 @@ const mounted = new WeakMap();
  * container was replaced. Without the guard Vue mounts over itself and throws
  * `Cannot read properties of null (reading 'nextSibling')`.
  */
-export function mountIsland(selector, label, setup) {
-  const root = document.querySelector(selector);
+export function mountIsland(target, label, setup, index = 0) {
+  const root = typeof target === 'string' ? document.querySelector(target) : target;
+  const selector = typeof target === 'string' ? target : '<element>';
   if (!root) {
     console.log(`[webflow-vue:island] "${label}" skipped — ${selector} not on this page`);
     return null;
@@ -32,7 +33,7 @@ export function mountIsland(selector, label, setup) {
   }
   const t0 = performance.now();
   const sweep = cleanDOMForVue(root, label);
-  const app = createApp({ setup });
+  const app = createApp({ setup: () => setup(root, index) });
   app.config.errorHandler = (err, _vm, info) =>
     console.error(`[webflow-vue:island] "${label}" runtime error (${info})`, err);
   app.mount(root);
@@ -56,4 +57,37 @@ export function unmountIsland(selector) {
   mounted.delete(root);
   console.log(`[webflow-vue:island] unmounted ${typeof selector === 'string' ? selector : 'element'}`);
   return true;
+}
+
+/**
+ * Mount the same island on EVERY element matching a selector — one app each.
+ *
+ * `mountIsland` uses querySelector and so only ever sees the first match, which
+ * silently leaves the rest rendering raw `{{ }}`. Use this when a component
+ * appears more than once: a card grid, a repeated CTA, a value echoed in the
+ * navbar and again in the hero.
+ *
+ * `setup` is called once per element and receives `(el, index)`, so each
+ * instance can read its own configuration off the DOM. Instances get separate
+ * state unless the setup pulls from a shared store, in which case they all stay
+ * in sync automatically.
+ *
+ *   mountIslands('[data-brew]', 'brew', (el, i) => {
+ *     const { cups } = toRefs(useSharedStore('brew'))
+ *     return { cups, price: Number(el.dataset.price) }
+ *   })
+ *
+ * @returns {Array} the mounted apps, in document order
+ */
+export function mountIslands(selector, label, setup) {
+  const roots = [...document.querySelectorAll(selector)];
+  if (!roots.length) {
+    console.log(`[webflow-vue:island] "${label}" skipped — nothing matches ${selector}`);
+    return [];
+  }
+  const apps = roots
+    .map((root, i) => mountIsland(root, `${label}[${i}]`, setup, i))
+    .filter(Boolean);
+  console.log(`[webflow-vue:island] "${label}" mounted on ${apps.length}/${roots.length} match(es) of ${selector}`);
+  return apps;
 }

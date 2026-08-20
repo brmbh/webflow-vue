@@ -7,7 +7,7 @@
  */
 
 // Mounting
-export { mountIsland, unmountIsland } from './mountIsland.js';
+export { mountIsland, mountIslands, unmountIsland } from './mountIsland.js';
 export { cleanDOMForVue } from './utils/cleanDOMForVue.js';
 
 // Cross-island and cross-page state
@@ -28,4 +28,4 @@ export { useFinsweetList, hasFinsweetList } from './composables/useFinsweetList.
 // Field extractors for the CMS parsers
 export * as extractors from './extractors.js';
 
-export const version = '0.0.4';
+export const version = '0.0.5';
