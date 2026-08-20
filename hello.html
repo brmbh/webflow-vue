@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Vueflow AI — the whole idea in one island</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 4rem auto; padding: 0 1.5rem; }
+      .zone { border: 1px dashed #bbb; border-radius: 8px; padding: 1rem 1.25rem; margin: 1.5rem 0; }
+      .row { display: flex; align-items: center; gap: 1rem; margin: 1rem 0; }
+      .step { font-size: 1.25rem; width: 2.5rem; height: 2.5rem; cursor: pointer; }
+      .dose { font-size: 2rem; font-weight: 600; }
+      small { color: #666; }
+    </style>
+  </head>
+  <body>
+    <h1>Brew dose</h1>
+
+    <!--
+      Everything below is "Webflow DOM": in the real page these elements and
+      classes are Designer-authored. Vue never owns the markup — it only
+      supplies `cups` and `grams`, and reads `v-on:click` / `{{ }}` off the
+      live DOM as its template.
+
+      Webflow Designer constraint: long-form directives only (v-on:click, not @click).
+    -->
+    <section id="vf-hello" class="zone">
+      <div class="row">
+        <button class="step" v-on:click="cups--" type="button">&minus;</button>
+        <span class="dose">{{ cups }}</span>
+        <span>cups</span>
+        <button class="step" v-on:click="cups++" type="button">+</button>
+      </div>
+      <p>&rarr; grind <strong>{{ grams }} g</strong> of beans</p>
+    </section>
+
+    <!--
+      Not inside the island. Vue's compiler never sees this subtree, so
+      Webflow's own runtime (sliders, lightboxes, IX2) keeps working here.
+    -->
+    <section class="zone">
+      <small>Pure Webflow zone — outside the island, untouched by Vue.</small>
+    </section>
+
+    <script type="module" src="/src/apps/hello.js"></script>
+  </body>
+</html>

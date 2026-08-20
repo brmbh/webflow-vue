@@ -2,7 +2,9 @@ import { ref, computed, watch } from 'vue';
 import { mountIsland } from './mountIsland.js';
 import { useWebflowCMS } from './composables/useWebflowCMS.js';
 import { useSharedStore } from './composables/useSharedStore.js';
+import './apps/hello.js';
 import './apps/brewlab.js';
+import './apps/filterlab.js';
 
 console.log('[vueflow] main.js loaded', new Date().toISOString());
 
