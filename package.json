@@ -1,16 +1,8 @@
 {
-  "name": "vueflow-ai",
+  "name": "vueflow",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.0.1",
   "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
-  },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.3",
     "@vitest/coverage-v8": "^2.1.9",
@@ -19,5 +11,52 @@
     "vite-plugin-mkcert": "^1.17.8",
     "vitest": "^2.1.9",
     "vue": "^3.5.15"
+  },
+  "description": "Vue 3 islands on Webflow-rendered DOM — mount, shared state, and CMS parsing, with no build step required.",
+  "license": "MIT",
+  "author": "Jan Brombach",
+  "homepage": "https://github.com/brmbh/vueflow",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brmbh/vueflow.git"
+  },
+  "keywords": [
+    "webflow",
+    "vue",
+    "islands",
+    "no-code",
+    "cms",
+    "hybrid",
+    "agentic"
+  ],
+  "main": "./dist/vueflow.esm.js",
+  "module": "./dist/vueflow.esm.js",
+  "unpkg": "./dist/vueflow.global.js",
+  "jsdelivr": "./dist/vueflow.global.js",
+  "exports": {
+    ".": {
+      "import": "./dist/vueflow.esm.js",
+      "default": "./dist/vueflow.global.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "skills",
+    "skills.sh.json",
+    "LICENSE",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "vue": "^3.4.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "build:lib": "vite build --mode lib"
   }
 }
