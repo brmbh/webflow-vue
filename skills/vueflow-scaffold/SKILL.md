@@ -1,27 +1,70 @@
 ---
 name: vueflow-scaffold
-description: Bootstrap or extend a Vue-on-Webflow hybrid mount on a target Webflow page. Installs the Vueflow bridge script via Webflow MCP, scaffolds reactive DOM and matching Vue code, and publishes with auto-reload of the local Vite dev server. Use when the user says "scaffold a Vue mount on Webflow", "set up Vueflow on this page", "add a Vue island to my Webflow page", "publish Vueflow changes", or "bootstrap the Vueflow bridge".
+description: Bootstrap or extend a Vue-on-Webflow hybrid mount on a target Webflow page. Scaffolds a Vueflow project with `npx vueflow init`, installs the bridge script via Webflow MCP, builds reactive DOM plus the matching Vue code, and publishes with auto-reload of the local Vite dev server. Also decides when no project is needed at all and two CDN script tags will do. Use when the user says "scaffold a Vue mount on Webflow", "set up Vueflow on this page", "add a Vue island to my Webflow page", "add reactivity to Webflow", "publish Vueflow changes", or "bootstrap the Vueflow bridge".
 license: MIT
 allowed-tools: Read Edit Bash mcp__claude_ai_Webflow__webflow_guide_tool mcp__claude_ai_Webflow__data_sites_tool mcp__claude_ai_Webflow__data_pages_tool mcp__claude_ai_Webflow__data_scripts_tool mcp__claude_ai_Webflow__data_element_tool mcp__claude_ai_Webflow__data_element_builder mcp__claude_ai_Webflow__data_element_settings_tool mcp__claude_ai_Webflow__data_style_tool mcp__claude_ai_Webflow__data_assets_tool
 ---
 
 # Vueflow Scaffold
 
-Orchestrate Vue-on-Webflow hybrid scaffolding: bridge install, mount-point creation, code + DOM co-evolution, publish, and auto-reload of the local Vite dev server.
+Orchestrate Vue-on-Webflow hybrid scaffolding: project bootstrap, bridge install, mount-point creation, code + DOM co-evolution, publish, and auto-reload of the local Vite dev server.
 
-Source of truth narrative: `SCAFFOLDING.md`. Canonical bridge content: `webflow-bridge.html`. Boilerplate entry: `src/main.js`.
+## First: does this user need a project at all?
+
+Two routes. Decide before touching anything.
+
+**Route 1 — no project.** One or two self-contained reactive widgets whose code
+fits in a Webflow code embed. Two script tags in the page head, the Vue in an
+embed placed *after* the island. No project, no bridge, no build, no dev server,
+and none of the phases below apply. Hand them this and stop:
+
+```html
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/brmbh/vueflow@v0.0.1/dist/vueflow.global.js"></script>
+```
+
+**Route 2 — a project.** Code that wants version control, a build step, real
+files, or behaviour spanning more than one page. That is what this skill drives.
+
+**Do not build Route 2 for a counter.** Scaffolding a Vite project for a single
+widget is the wrong answer even though this skill is about Route 2. The API is
+identical either way — same `Vueflow` global, same `mountIsland` — so moving
+from Route 1 to Route 2 later costs nothing.
 
 ## Important Note
 
 Assumes:
 - Webflow MCP is connected and authed
 - Webflow Designer is open on the target page (required for Designer-side actions in Phase 3 + 4)
-- Local Vite dev server is running on `https://localhost:3000` (`npm run dev` from the repo root)
+- A Vueflow project in the working directory — **Phase 0 creates one if absent**
+- Local Vite dev server is running on `https://localhost:3000` (`npm run dev` in that project)
 - The user has the page open with `?debug` appended for live HMR
 
 ALWAYS call `mcp__webflow__webflow_guide_tool` first.
 
 ## Instructions
+
+### Phase 0 — Project bootstrap (skip if a project already exists)
+
+A Vueflow project is a directory carrying `vueflow` in its `package.json`
+dependencies, `src/main.js` as its entry, and `vueflow-bridge.html` beside them.
+
+If it is absent, create it with the CLI. **Never hand-write these files** — the
+CLI pins the dependency to its own version and points the bridge at the matching
+CDN tag, and those two must agree:
+
+```bash
+npx vueflow init <dir>     # --force to overwrite, --name to override the name
+npm install
+npm run dev
+```
+
+It writes `package.json`, `vite.config.js`, `src/main.js`, `vueflow-bridge.html`,
+`README.md` and `.gitignore`, and refuses to overwrite existing files unless
+forced.
+
+Every reference to `src/main.js` and `vueflow-bridge.html` below means **that
+project's** files.
 
 ### Phase 1 — Discovery
 
@@ -31,8 +74,8 @@ ALWAYS call `mcp__webflow__webflow_guide_tool` first.
    - `data_scripts_tool > list_registered_scripts(site_id)`
    - `data_scripts_tool > get_page_script(page_id)` (404 = no scripts yet, fine)
    - `de_page_tool > get_current_page(siteId)` to confirm Designer position
-4. Read `webflow-bridge.html` for the canonical bridge source.
-5. Read `src/main.js` for current code state.
+4. Read the project's `vueflow-bridge.html` for the canonical bridge source.
+5. Read the project's `src/main.js` for current code state.
 
 ### Phase 2 — Plan + Confirm
 
@@ -55,7 +98,10 @@ Skip if `get_page_script(page_id)` already lists the bridge.
    - `version`: `0.1.0` (increment on conflict)
    - `location`: `footer`
    - `canCopy`: `true`
-   - `sourceCode`: contents of `webflow-bridge.html` with `<script>` and `<!-- -->` stripped
+   - `sourceCode`: contents of the project's `vueflow-bridge.html` with `<script>` and `<!-- -->` stripped.
+     **Replace `SITE_ID`, `STAGING_ASSET_ID` and `PROD_ASSET_ID` first** — the
+     scaffolded bridge ships them as placeholders, and a bridge published with
+     them intact loads nothing outside `?debug`.
 2. `data_scripts_tool > upsert_page_script` — apply registered ID to target page footer
 3. `data_scripts_tool > get_page_script(page_id)` — verify
 
@@ -75,7 +121,7 @@ When adding a reactive variable + display:
 ### Phase 5 — Publish + Auto-Reload
 
 1. `data_sites_tool > publish_site(site_id, publishToWebflowSubdomain: true)`
-2. After success: `Bash: touch <repo>/src/main.js`
+2. After success: `Bash: touch src/main.js` (from the project root)
 3. Vite's file watcher fires → `[vite] full reload` → browser auto-reloads → both code and DOM changes visible in one go.
 
 The `touch` is the trick that ties Webflow publishes to Vite HMR. Without it, the user must manually reload to see DOM changes.
@@ -106,7 +152,7 @@ The `touch` is the trick that ties Webflow publishes to Vite HMR. Without it, th
 1. Discovery → bridge installed, `#app` exists with counter
 2. Plan: add `status` computed in `main.js`, append `<p>Status: {{ status }}</p>` inside `#app`
 3. Wait for "scaffold"
-4. `Edit main.js` + `whtml_builder` in parallel
+4. `Edit src/main.js` + `element_builder` in parallel
 5. Wait for "publish"
 6. `publish_site` + `touch src/main.js`
 7. Verify on `?debug` URL
@@ -271,7 +317,7 @@ deciding factor:
 | our `loadAllPages` | 4 sequential fetches | 4 fetches again — its cache is an in-memory `Map` that dies with the page |
 
 Their persistence is an IndexedDB store named after the site ID, versioned by the
-site's last-publish timestamp (observed: db `61d44e644e2a5769e18a848c`, version
+site's last-publish timestamp (observed: db name = the Webflow site id, version
 `1787153753000`). Republishing bumps the version and wipes it, so it cannot serve
 stale content. We have no equivalent, and a 117× difference on a return visit is
 not something to hand-wave.

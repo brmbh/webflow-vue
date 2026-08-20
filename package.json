@@ -40,8 +40,11 @@
     }
   },
   "files": [
-    "dist",
-    "src",
+    "bin",
+    "dist/vueflow.global.js",
+    "dist/vueflow.esm.js",
+    "src/cli",
+    "templates",
     "skills",
     "skills.sh.json",
     "LICENSE",
@@ -58,5 +61,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "build:lib": "vite build --mode lib"
+  },
+  "bin": {
+    "vueflow": "bin/vueflow.js"
   }
 }
