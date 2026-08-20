@@ -4,7 +4,7 @@ Vue 3 islands on Webflow-rendered DOM. Webflow owns the markup and the styling;
 Vue owns the behaviour. No build step required, and no page-wide takeover — the
 rest of the page stays untouched Webflow, with its own runtime intact.
 
-> **Status: `0.0.2`, unstable.** The API still moves. Pin a tag; expect
+> **Status: `0.0.6`, unstable.** The API still moves. Pin a tag; expect
 > signatures to change before `0.1.0`.
 
 ## Quick start — two script tags
@@ -13,7 +13,7 @@ Paste into your Webflow page's **custom code (head)**:
 
 ```html
 <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/webflow-vue@0.0.2/dist/webflow-vue.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/webflow-vue@0.0.6/dist/webflow-vue.global.js"></script>
 ```
 
 Give any element an id — that is your island. Then add an **embed placed after
@@ -52,6 +52,90 @@ npx skills add brmbh/webflow-vue
 
 Installs `webflow-vue-scaffold`, which drives the Webflow MCP to build islands for
 you — bridge install, DOM scaffold, matching Vue code, publish.
+
+## API
+
+```js
+mountIsland(target, label, setup)      // one element; target is a selector or an element
+mountIslands(selector, label, setup)   // every match, one app each
+unmountIsland(target)                  // tear down, so the element can mount again
+useSharedStore(name, initial, opts)    // named reactive singleton, optional persistence
+useWebflowCMS(options)                 // parse rendered Collection Lists into reactive data
+fetchCollection(url, options)          // fetch an item's template page, cached and deduped
+loadAllPages(collections, options)     // walk Webflow's pagination past the 100-item limit
+useFinsweetList(options)               // read items from Finsweet Attributes instead
+cleanDOMForVue(root, label)            // detach/restore Webflow runtime nodes around a mount
+```
+
+`setup` is Vue's `setup()`. Whatever object it returns becomes the vocabulary
+your Designer markup can reference; anything not returned stays private. Under
+`mountIslands` it is called once per element and receives `(el, index)`.
+
+### One element or many
+
+`mountIsland` uses `querySelector`, so a class or attribute selector mounts the
+**first match only** and leaves the rest rendering raw `{{ }}`. When a component
+appears more than once, use `mountIslands` — and prefer an attribute over IDs,
+so adding another participant is a Designer action rather than a code change.
+
+```js
+mountIslands('[data-brew]', 'brew', () => ({ cups, grams }))
+```
+
+### Where to declare things
+
+The callback runs **once per island**, and that single fact decides everything:
+
+| declared | outside the callback | inside the callback |
+|---|---|---|
+| plain `const` | once | once per island — harmless |
+| `computed` over shared state | 1 evaluation | N evaluations, same values |
+| **`ref`** | **shared** by every island | **independent** per island |
+| anything using `el` / `index` | not available | required |
+
+> **outside = properties of the thing · inside = properties of this instance**
+
+```js
+const cups = ref(1)                                  // shared by every island
+const grams = computed(() => cups.value * 18)        // evaluated once
+
+mountIslands('[data-brew]', 'brew', () => ({ cups, grams }))
+```
+
+```js
+mountIslands('[data-bean]', 'bean', (el) => {
+  const qty = ref(1)                                 // this card's own
+  const price = Number(el.dataset.price) || 0        // this card's own
+  return { qty, price, total: computed(() => qty.value * price) }
+})
+```
+
+### You probably do not need `useSharedStore`
+
+Within one script block, a `ref` declared outside the callback is already shared
+by every island — they close over the same object. The store earns its place in
+three cases only:
+
+1. **Separate `<script>` blocks or embeds**, which share no lexical scope.
+2. **Separate files** you would rather not couple with imports.
+3. **Persistence** — `{ persist: true }` survives a page load or a client-side
+   navigation. A plain ref resets.
+
+### Page transitions (barba, swup, Turbo)
+
+The container is replaced, so islands inside it are destroyed and the fresh
+markup is never mounted. Re-run the mounts after each navigation:
+
+```js
+function mountIslandsOnPage() { /* all your mount calls */ }
+
+mountIslandsOnPage()
+if (window.barba) barba.hooks.afterEnter(mountIslandsOnPage)
+```
+
+`mountIsland` returns the existing app for a root it has already mounted, so
+re-running is safe. State resets across a transition because the elements are
+new — use a persisted store for anything that must survive.
 
 ## Why islands
 

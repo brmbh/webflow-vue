@@ -417,7 +417,7 @@ const extractors = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePr
   number,
   richText
 }, Symbol.toStringTag, { value: "Module" }));
-const version = "0.0.6";
+const version = "0.0.7";
 export {
   cleanDOMForVue,
   clearCollectionCache,

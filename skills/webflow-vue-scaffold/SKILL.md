@@ -20,7 +20,7 @@ and none of the phases below apply. Hand them this and stop:
 
 ```html
 <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/webflow-vue@0.0.2/dist/webflow-vue.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/webflow-vue@0.0.6/dist/webflow-vue.global.js"></script>
 ```
 
 **Route 2 — a project.** Code that wants version control, a build step, real
@@ -352,6 +352,88 @@ Rules that follow:
 - Fetched markup can arrive unstyled — Webflow splits CSS per page. Carry the
   stylesheets over from the fetched document.
 
+
+### Islands, state, and scope — decision rules (measured 2026-08-20)
+
+The numbers below were measured with three islands on one page, against the
+published build. Do not re-derive them; do not guess at them.
+
+**One island per mount root, and a root is one element.** IDs are unique by
+definition, so an island cannot be "reused" on a second element. If the same
+thing appears in more than one place, that is `mountIslands`.
+
+| need | use |
+|---|---|
+| one element | `mountIsland('#id', label, setup)` |
+| several elements, same component | `mountIslands('[data-x]', label, setup)` |
+| you hold the element already | `mountIsland(el, label, setup)` |
+
+**`mountIsland` is singular and silent about it.** It calls `querySelector`, so
+`mountIsland('.card', …)` mounts the first `.card` and leaves every other one
+rendering raw `{{ }}` — while still logging a success line. Whenever more than
+one element participates, prefer an attribute (`data-brew`) over IDs: adding a
+fourth participant then becomes a Designer action with no code change.
+
+**The setup callback runs once per island.** This is the rule everything else
+follows from:
+
+| declared | outside the callback | inside the callback |
+|---|---|---|
+| plain `const` | once | once per island — harmless |
+| `computed` over shared state | 1 evaluation | N evaluations, identical values |
+| **`ref`** | **shared** by every island | **independent** per island |
+| anything using `el` / `index` | not available | required |
+
+Measured with three islands: a `computed` declared outside ran its getter once
+at mount and once per change; declared inside it ran three times and three
+times, for the same rendered output.
+
+> **outside = properties of the thing · inside = properties of this instance**
+
+Privacy comes from *not returning* a value, not from where it is declared. A
+constant belongs outside; per-card configuration read from `el.dataset` belongs
+inside.
+
+**Do not reach for `useSharedStore` by default.** Within a single script block a
+plain `ref` declared outside the callback is already shared by every island —
+they close over the same object. Recommending the store there teaches a concept
+the user does not need. It earns its place in exactly three cases:
+
+1. **Separate `<script>` blocks or embeds** — no shared lexical scope, and the
+   named registry avoids hanging state off `window`.
+2. **Separate files** in a bundled project that you would rather not couple with
+   imports.
+3. **Persistence** — `{ persist: true }` mirrors to sessionStorage, so state
+   survives a page load or a client-side navigation. A plain ref resets.
+
+**Client-side page transitions (barba, swup, Turbo).** The container is
+replaced, so islands inside it are destroyed and the new markup is never
+mounted — the page shows raw `{{ }}` after any in-site navigation. Wrap the
+mounts in a function, call it once directly and again from the library's
+after-enter hook. `mountIsland` records its roots and returns the existing app
+rather than mounting twice, so re-running is safe; without that guard Vue mounts
+over itself and throws `Cannot read properties of null (reading 'nextSibling')`.
+Island state resets across a transition because the elements are genuinely new —
+use a persisted store for anything that must survive.
+
+**The `=>` return trap.** `() => ({ cups })` and `() => { return { cups } }` are
+equivalent. `() => { cups }` is a block, returns `undefined`, and the island
+renders empty with only a `[Vue warn]` in the console. Prefer the explicit
+`{ return { … } }` form in generated code.
+
+**Refs need `.value` in the callback and never in the markup.** `{{ cups.value }}`
+in a Designer text block renders nothing.
+
+**Keep the mount root tight.** `<style>` blocks and `script.w-json` configs
+inside a root are detached before mount and restored after (fixed in 0.0.6;
+before that, styles were dropped and part of the page silently lost its CSS).
+Sliders, lightboxes, dropdowns, nav and IX2 interactions are *not* protected —
+never let an island wrap them. Check the subtree before choosing a root.
+
+**Foreign `v-*` attributes break islands.** Any attribute starting with `v-` is
+treated as a Vue directive. Other Webflow libraries use that prefix — socks-ui's
+accordion ships `v-expand` — and Vue fails with "Failed to resolve directive"
+and renders nothing. Check the subtree for `v-` attributes that are not yours.
 
 ### Bridge install constraints
 - 2000-char limit on inline `sourceCode`

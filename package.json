@@ -1,6 +1,6 @@
 {
   "name": "webflow-vue",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "type": "module",
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.3",
@@ -47,7 +47,8 @@
     "skills",
     "skills.sh.json",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "peerDependencies": {
     "vue": "^3.4.0"
