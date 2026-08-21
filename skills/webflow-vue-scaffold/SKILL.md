@@ -33,6 +33,29 @@ Both routes need:
 
 Route 2 needs more; that list is at the top of the Route 2 section.
 
+## Ask, do not assume
+
+The confirmation gates below ("scaffold", "install bridge", "publish") approve an
+*action* that is already decided. These are different: points where more than one
+answer is defensible, the user is the only one who knows which, and picking
+silently is expensive to undo. Ask, name the default, move on.
+
+| Decision | Default | Ask when |
+|---|---|---|
+| Which page | — | Always, if no published URL was given. Step 1 cannot run without one, and a page name or a Designer link is not a URL. |
+| Route, on a route-0 page | route 1 | Always. Committing someone to a build step, a bundle and a dev server is not an implementation detail. |
+| Where the project lives | a fresh directory via `init` | Whenever route 2 starts — Phase 0, or graduation step 1. |
+| Whether to graduate at all | stay on the current route | When the user asks for a project, or a second page needs the same island. `detect` reports the route; it does not judge it. Graduation is always the user's call, never a verdict. |
+
+On **where the project lives**: an existing repo is a legitimate answer, and the
+CLI half-supports it — `init ./some-dir` succeeds as long as those six files are
+not already there. But nothing in this skill covers a nested project inside a
+larger build: whose `package.json`, whose `vite.config.js`, who owns the bundle
+output and the asset upload. If that is what the user wants, say plainly that it
+is undocumented territory and get explicit agreement before improvising.
+
+Same principle as § Designer-only steps: ask, do not engineer around.
+
 ## Step 1 — read the published page, before any MCP call
 
 Do not ask the user which route they are on, and do not infer it from the
@@ -205,7 +228,8 @@ A webflow-vue project is a directory carrying **`webflow-vue`** in its
 `package.json` dependencies, `src/main.js` as its entry, and
 `webflow-vue-bridge.html` beside them.
 
-If it is absent, create it with the CLI. **Never hand-write these files** — the
+If it is absent, **ask where it should live** before creating it (see § Ask, do
+not assume), then create it with the CLI. **Never hand-write these files** — the
 CLI pins the dependency to its own version and points the bridge at the matching
 CDN tag, and those two must agree:
 
@@ -317,7 +341,9 @@ a feature of route 1, not a symptom.
 
 The order matters, because the live page must keep working throughout:
 
-1. `npx webflow-vue init <dir>` and `npm install`. Pin the same library version
+1. **Ask where the project goes** (see § Ask, do not assume) — a fresh directory
+   is the default and the only path this procedure covers. Then
+   `npx webflow-vue init <dir>` and `npm install`. Pin the same library version
    the page currently loads — `detect` prints it — so the migration changes one
    thing at a time.
 2. Move the page's island code into `src/main.js` verbatim, converting the two
