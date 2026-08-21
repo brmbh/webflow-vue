@@ -261,8 +261,20 @@ export function formatReport(report) {
 /** Fetch a published page, or read it off disk when the arg is a path. */
 export async function loadPage(target, { readFile } = {}) {
   if (/^https?:\/\//i.test(target)) {
-    const res = await fetch(target, { redirect: 'follow' });
-    if (!res.ok) throw new Error(`${target} responded ${res.status} ${res.statusText}`);
+    let res;
+    try {
+      res = await fetch(target, { redirect: 'follow' });
+    } catch (err) {
+      // Node's fetch throws a bare `fetch failed` and hides the reason — DNS,
+      // TLS, offline — in err.cause. Unwrapped, this is the first thing a new
+      // user sees and it tells them nothing.
+      const why = err.cause?.message ?? err.message;
+      throw new Error(`could not fetch ${target} — ${why}\n  (transient? try again; the page must be published and reachable)`);
+    }
+    if (!res.ok) {
+      const hint = res.status === 404 ? ' — is the page published, and is the path right?' : '';
+      throw new Error(`${target} responded ${res.status} ${res.statusText}${hint}`);
+    }
     return res.text();
   }
   if (!readFile) throw new Error(`not a URL: ${target}`);
