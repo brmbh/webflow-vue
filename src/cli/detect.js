@@ -39,6 +39,22 @@ const TRANSITION_LIBRARIES = [
 /** Placeholders `webflow-vue init` writes into the bridge for hand-filling. */
 const BRIDGE_PLACEHOLDERS = ['SITE_ID', 'STAGING_ASSET_ID', 'PROD_ASSET_ID'];
 
+/**
+ * Webflow-hosted registered scripts. A script registered through the Data API
+ * as "inline" is NOT published inline — Webflow hosts it as a file and emits a
+ * plain `<script src>`. So the bridge, whose whole signature is its source, is
+ * invisible in the page HTML. Measured on a real route-2 page, 2026-08-21:
+ * the first cutover this tool watched was reported as route 0.
+ *
+ * These URLs are collected so the CLI can fetch their bodies and hand them back
+ * as `extraScripts`, which makes the ordinary inline detection work on the real
+ * source instead of guessing from a filename.
+ */
+const REGISTERED_SCRIPT = /cdn\.prod\.website-files\.com\/[^"'\s]+\.js/i;
+
+/** Last-resort signal when the bodies cannot be fetched (offline, a file path). */
+const BRIDGE_FILENAME = /vue.?bridge[^/"']*?(?:-(\d+\.\d+\.\d+))?\.js/i;
+
 /** `<script …>…</script>`, attributes and body captured separately. */
 const SCRIPT_TAG = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
 const SRC_ATTR = /\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i;
@@ -114,11 +130,16 @@ function collectMounts(scripts) {
  * Read the route and the page's island hygiene out of published HTML.
  *
  * @param {string} html the published page, exactly as served
- * @param {{url?: string}} [meta]
+ * @param {{url?: string, extraScripts?: string[]}} [meta] `extraScripts` are the
+ *   bodies of Webflow-hosted registered scripts, fetched by the caller; they are
+ *   analysed exactly as if the page had carried them inline.
  * @returns {object} report — `route` is 1, 2, 0 (neither) or 'mixed' (both)
  */
-export function detectRoute(html, { url = null } = {}) {
-  const scripts = collectScripts(html);
+export function detectRoute(html, { url = null, extraScripts = [] } = {}) {
+  const scripts = [
+    ...collectScripts(html),
+    ...extraScripts.map((body) => ({ attrs: '', body, src: null, rawSrc: null })),
+  ];
   const markup = markupOnly(html);
   const warnings = [];
   const warn = (code, message) => warnings.push({ code, message });
@@ -149,10 +170,21 @@ export function detectRoute(html, { url = null } = {}) {
     if (script.body.includes('WEBFLOW_VUE_VERSION') && script.body.includes('addScript')) {
       const version = script.body.match(/WEBFLOW_VUE_VERSION\s*=\s*['"]([^'"]+)['"]/);
       const placeholders = BRIDGE_PLACEHOLDERS.filter((p) => script.body.includes(p));
-      bridge = { version: version ? version[1] : null, placeholders };
+      bridge = { version: version ? version[1] : null, placeholders, hosted: false };
     }
     for (const [re, name] of TRANSITION_LIBRARIES) {
       if (re.test(script.body)) loadedTransitions.add(name);
+    }
+  }
+
+  // Nothing inline said "bridge", but a Webflow-hosted registered script whose
+  // filename looks like one is strong enough to report — flagged as unconfirmed,
+  // because its source was not read.
+  if (!bridge) {
+    const candidate = registeredScriptUrls(html).find((u) => BRIDGE_FILENAME.test(u));
+    if (candidate) {
+      const v = candidate.match(BRIDGE_FILENAME);
+      bridge = { version: v?.[1] ?? null, placeholders: [], hosted: true, unconfirmed: true };
     }
   }
 
@@ -175,6 +207,9 @@ export function detectRoute(html, { url = null } = {}) {
   // --- warnings -----------------------------------------------------------
   if (route === 'mixed') {
     warn('mixed-routes', 'a bridge and a static CDN tag are both present — Vue and the library load twice, and two Vue instances do not share reactivity');
+  }
+  if (bridge?.unconfirmed) {
+    warn('bridge-unread', 'the bridge is a Webflow-hosted registered script and its source was not fetched — version and placeholder state are unverified');
   }
   if (bridge?.placeholders.length) {
     warn('bridge-placeholders', `the bridge still carries ${bridge.placeholders.join(', ')} — outside ?debug it loads no bundle at all`);
@@ -238,7 +273,11 @@ export function formatReport(report) {
   row('vue', scripts.vue ? `${scripts.vue.version ?? 'unpinned'}${scripts.vue.prod ? ' (prod build)' : ''} — ${scripts.vue.src}` : '—');
   row('webflow-vue', scripts.library ? `${scripts.library.version ?? 'unpinned'} — ${scripts.library.src}` : '—');
   row('bridge', scripts.bridge ? `pins webflow-vue@${scripts.bridge.version ?? '?'}` : '—');
-  row('mounts', mounts.length ? mounts.map((m) => `${m.label} → ${m.selector}`).join('\n' + ' '.repeat(17)) : '—');
+  row('mounts', mounts.length
+    ? mounts.map((m) => `${m.label} → ${m.selector}`).join('\n' + ' '.repeat(17))
+    : report.route === 2
+      ? '— (route 2: the mount calls live in the bundle, not the page)'
+      : '—');
   row('markup', `${markup.mustaches.length} mustache(s), ${markup.directives.length} directive(s)`);
   if (report.transitions.length) {
     row('transitions', report.transitions.map((t) => `${t.name}${t.active ? '' : ' (loaded, no container on this page — inert)'}`).join(', '));
@@ -256,6 +295,21 @@ export function formatReport(report) {
   }
   out.push('');
   return out.join('\n');
+}
+
+/**
+ * Webflow-hosted registered-script URLs in a page, deduped and unescaped.
+ * The published HTML percent-encodes the slashes in these `src` values.
+ */
+export function registeredScriptUrls(html) {
+  const urls = new Set();
+  for (const [, attrs] of html.matchAll(SCRIPT_TAG)) {
+    const m = attrs.match(SRC_ATTR);
+    if (!m) continue;
+    const raw = (m[1] ?? m[2] ?? m[3]).trim();
+    if (REGISTERED_SCRIPT.test(raw)) urls.add(decodeURIComponent(raw));
+  }
+  return [...urls];
 }
 
 /** Fetch a published page, or read it off disk when the arg is a path. */

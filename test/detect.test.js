@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detectRoute } from '../src/cli/detect.js';
+import { detectRoute, registeredScriptUrls } from '../src/cli/detect.js';
 
 /**
  * The route question has to be decided from the published page, because that is
@@ -146,5 +146,54 @@ describe('page transitions', () => {
     }));
     expect(r.transitions).toEqual([{ name: 'barba', active: false }]);
     expect(r.warnings.map((w) => w.code)).not.toContain('page-transitions');
+  });
+});
+
+/**
+ * Webflow publishes a script registered as "inline" through the Data API as a
+ * hosted FILE, not inline. The bridge's whole signature is its source, so it is
+ * invisible in the page HTML — the first real route-2 cutover this tool watched
+ * reported as route 0 while the page worked perfectly.
+ */
+describe('a bridge hosted by Webflow rather than inlined', () => {
+  const HOSTED = '<script src="https://cdn.prod.website-files.com/670a%2F689e%2F6a88%2Fwebflow_vuebridge-0.2.1.js" type="text/javascript"></script>';
+  const BRIDGE_BODY = `
+    function addScript(src, isModule, onload) {}
+    var WEBFLOW_VUE_VERSION = '0.2.1';
+    var STAGING_BUNDLE = 'https://cdn.prod.website-files.com/site/asset_main.txt';
+  `;
+
+  it('reads route 2 when the hosted body is supplied', () => {
+    const r = detectRoute(page({ footer: HOSTED }), { extraScripts: [BRIDGE_BODY] });
+    expect(r.route).toBe(2);
+    expect(r.scripts.bridge.version).toBe('0.2.1');
+    expect(r.scripts.bridge.unconfirmed).toBeUndefined();
+  });
+
+  it('still reports route 2 from the filename when the body cannot be fetched', () => {
+    const r = detectRoute(page({ footer: HOSTED }));
+    expect(r.route).toBe(2);
+    expect(r.scripts.bridge.unconfirmed).toBe(true);
+    expect(r.warnings.map((w) => w.code)).toContain('bridge-unread');
+  });
+
+  it('exposes the registered-script URLs, percent-decoded', () => {
+    expect(registeredScriptUrls(page({ footer: HOSTED }))).toEqual([
+      'https://cdn.prod.website-files.com/670a/689e/6a88/webflow_vuebridge-0.2.1.js',
+    ]);
+  });
+
+  it('does not mistake an ordinary Webflow-hosted script for a bridge', () => {
+    const other = '<script src="https://cdn.prod.website-files.com/a/b/some_analytics-1.0.0.js"></script>';
+    const r = detectRoute(page({ footer: other }));
+    expect(r.route).toBe(0);
+    expect(r.scripts.bridge).toBeNull();
+  });
+
+  it('finds the placeholders in a hosted bridge body too', () => {
+    const r = detectRoute(page({ footer: HOSTED }), {
+      extraScripts: [BRIDGE_BODY.replace('site/asset', 'SITE_ID/STAGING_ASSET_ID')],
+    });
+    expect(r.warnings.map((w) => w.code)).toContain('bridge-placeholders');
   });
 });

@@ -3,6 +3,45 @@
 All notable changes to `webflow-vue`. Versions are `0.0.x` and the API still
 moves; pin an exact version.
 
+## 0.2.2 — 2026-08-21
+
+Found by running the first real route-1 → route-2 graduation end to end, against
+a live page. Both bugs were invisible until an actual cutover happened.
+
+### Fixed
+- **`detect` could not see a bridge.** A script registered through the Data API
+  as "inline" is not published inline — Webflow hosts it as a file and emits a
+  plain `<script src>`. The bridge's entire signature is its source, so it was
+  absent from the page HTML and a working route-2 page reported as **route 0**,
+  complete with a `mustaches-without-library` warning telling the user their
+  visitors were seeing raw braces. They were not.
+
+  `detect` now collects Webflow-hosted registered-script URLs, the CLI fetches
+  their bodies, and they are analysed exactly as if inline — so version and
+  placeholder detection work on the real source rather than a filename guess.
+  When the bodies cannot be fetched (offline, or a local file) it falls back to
+  the filename and marks the bridge `unconfirmed` with a `bridge-unread` warning,
+  rather than silently reporting the page as bare.
+
+- **The bridge template contradicted itself about the bundle filename.** Its
+  comment said to upload `dist/main.js` renamed to `bundle.txt`; its code builds
+  the URL as `…/<asset-id>_main.txt`. A Webflow asset's URL embeds its filename,
+  so following the comment produces `_bundle.txt` and the bridge fetches a 404 —
+  silently, and only outside `?debug`, which is the hardest possible way to
+  notice. The skill repeated the comment's version. Both now say `main.txt` and
+  explain why the name is load-bearing. *(Verified against a real upload,
+  2026-08-21.)*
+
+### Documentation
+- The skill's upload step now carries the measured mechanics: `create_asset`
+  wants the **MD5** as 32 lowercase hex, returns `uploadUrl` + `uploadDetails`,
+  the bytes go to S3 as multipart form-data with the file field last, and a
+  **201** means success — then confirm `hostedUrl` returns 200 and its checksum
+  matches the local build.
+- On route 2 the report no longer prints a bare `mounts —`, which read as "no
+  mounts found" when the mount calls simply live in the bundle rather than the
+  page.
+
 ## 0.2.1 — 2026-08-21
 
 Everything here landed after 0.2.0 was packed, so the published 0.2.0 tarball is

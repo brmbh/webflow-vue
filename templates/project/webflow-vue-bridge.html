@@ -18,8 +18,11 @@
 
   BEFORE THIS WORKS, REPLACE:
     SITE_ID, STAGING_ASSET_ID, PROD_ASSET_ID
-  Webflow assets reject .js, so upload dist/main.js renamed to bundle.txt. The
-  CDN serves it without nosniff, so a classic script tag executes it.
+  Webflow assets reject .js, so upload dist/main.js renamed to main.txt — the
+  name matters: an asset's URL is <site-id>/<asset-id>_<filename>, and the URLs
+  below end in _main.txt. Uploading it as bundle.txt yields _bundle.txt and the
+  bridge 404s, silently, and only outside ?debug. The CDN serves .txt without
+  nosniff, so a classic script tag executes it. (Verified 2026-08-21.)
 -->
 <script>
   function addScript(src, isModule, onload) {

@@ -409,9 +409,16 @@ is not using `?debug` gets an unmounted page.
    Webflow markup does not change at all. Iterate locally — the live page is
    still serving its route-1 code and cannot see this project yet.
 3. **Build and upload the bundle.** `npm run build` produces `dist/main.js`.
-   Webflow assets reject `.js`, so upload it renamed to `bundle.txt` via
-   `data_assets_tool`, and read back the asset ID. Do this for the staging asset
-   at minimum; a prod domain needs its own.
+   Webflow assets reject `.js`, so upload it renamed to **`main.txt`** — the name
+   is load-bearing. An asset's URL is `<site-id>/<asset-id>_<filename>`, and the
+   bridge's URLs end in `_main.txt`; upload it as `bundle.txt` and the bridge
+   fetches a 404, silently, and only outside `?debug`. *(Verified 2026-08-21.)*
+
+   `data_assets_tool > create_asset` takes `file_name` and the **MD5** of the
+   bytes as 32 lowercase hex, and returns `uploadUrl` + `uploadDetails`; POST the
+   bytes to S3 as multipart form-data with every `uploadDetails` property as a
+   field and the file last, expecting **201**. Then confirm `hostedUrl` returns
+   200 and its checksum matches the local build before going further.
 4. **Install the bridge** (Phase 3) with `SITE_ID` and the asset IDs **filled in**.
    Page level only.
 5. **Remove the route-1 script tags** from the page's freeform footer block —

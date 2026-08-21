@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { init } from '../src/cli/init.js';
-import { detectRoute, formatReport, loadPage } from '../src/cli/detect.js';
+import { detectRoute, formatReport, loadPage, registeredScriptUrls } from '../src/cli/detect.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(fs.readFileSync(path.resolve(HERE, '../package.json'), 'utf8'));
@@ -71,7 +71,23 @@ async function runDetect(target) {
     process.exit(1);
   }
   const html = await loadPage(target, { readFile: (p) => fs.readFileSync(p, 'utf8') });
-  const report = detectRoute(html, { url: target });
+
+  // A script registered through the Data API as "inline" is published as a
+  // hosted file, so the bridge's source is not in the page HTML. Fetch those
+  // bodies and analyse them as if they were inline — otherwise a working route-2
+  // page reports as route 0, which is how the first real cutover looked.
+  const extraScripts = [];
+  for (const scriptUrl of registeredScriptUrls(html).slice(0, 10)) {
+    try {
+      const res = await fetch(scriptUrl);
+      if (res.ok) extraScripts.push(await res.text());
+    } catch {
+      // Unreachable registered script: fall back to the filename heuristic,
+      // which reports the bridge as unconfirmed rather than missing.
+    }
+  }
+
+  const report = detectRoute(html, { url: target, extraScripts });
   if (flags.json) {
     console.log(JSON.stringify(report, null, 2));
   } else {
