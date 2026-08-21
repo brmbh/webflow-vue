@@ -17,6 +17,22 @@ what it says, and only then pick a track. Most of this file is route 2; a page o
 route 1 needs none of it, and scaffolding a project onto one is the failure this
 structure exists to prevent.
 
+## Before you start
+
+Both routes need:
+
+- **The Webflow MCP connected and authenticated.** Everything below reads and
+  writes through it. If it is not connected, say so and stop — there is no
+  useful partial version of this.
+- **A published page URL.** Not a Designer link, not a page name: the
+  `*.webflow.io` (or custom-domain) URL a browser can fetch. Step 1 needs it, and
+  so does every verification step. If the page has never been published, say so
+  and treat it as route 0 — a page nobody can fetch is a page you cannot verify.
+- **Node, for the CLI.** Route 1 needs it only for `detect`; route 2 needs it for
+  the project too.
+
+Route 2 needs more; that list is at the top of the Route 2 section.
+
 ## Step 1 — read the published page, before any MCP call
 
 Do not ask the user which route they are on, and do not infer it from the
@@ -31,6 +47,25 @@ Run this **first**, before `webflow_guide_tool`, before `list_sites`, before
 anything. It reports the route, the pinned versions, every `mountIsland()` call
 it can read, and the hygiene problems that are visible statically. `--json` if
 you want to branch on it programmatically.
+
+**`detect` needs `webflow-vue` ≥ 0.2.0.** If it prints `unknown command: detect`,
+the CLI resolved to an older release. Do not skip Step 1 over it — the route
+question still has to be answered from the published page. Do it by hand:
+
+```bash
+curl -sSL "https://<site>.webflow.io/<path>" -o /tmp/page.html
+grep -o 'cdn\.jsdelivr\.net/npm/webflow-vue@[^"]*' /tmp/page.html || echo "no route-1 tag"
+grep -o "WEBFLOW_VUE_VERSION *= *'[^']*'"          /tmp/page.html || echo "no bridge"
+grep -o 'mountIsland([^)]*'                        /tmp/page.html || echo "no mount calls"
+```
+
+A route-1 tag and no bridge is route 1; a bridge and no tag is route 2; both is
+`mixed`; neither is route 0. The `|| echo` matters — `grep` exits non-zero when it
+finds nothing, so chaining these with `&&` silently abandons the rest of the
+check after the first miss.
+
+That is the whole route decision. The rest of what `detect` reports is diagnostics
+you can live without for one session.
 
 Two reasons it comes before the MCP and not after:
 

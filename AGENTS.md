@@ -120,11 +120,22 @@ Never assert one without verifying it, and date it when you write it down.
    still drives a real page; that command can, and it is the whole reason the
    doctrine exists.
 4. Add a CHANGELOG entry. Say what broke and why, not just what changed.
-5. Commit, `git tag -a vX.Y.Z`, push both.
+5. Commit and `git tag -a vX.Y.Z`.
 6. **`npm publish` must be run by Jan.** It is blocked for agents, and it needs
    his 2FA-bypass token. Hand him the command; do not try to work around it.
-7. Verify after: registry version, the jsDelivr URL returning 200, and its
+7. Confirm the registry has the new version, then `git push origin main
+   --follow-tags`. That order matters — see below.
+8. Verify after: registry version, the jsDelivr URL returning 200, and its
    sha256 matching the local build. jsDelivr lags the registry by about a minute.
+
+**Publish npm before pushing GitHub.** The skill ships from two places on
+independent timelines: `npx skills add brmbh/webflow-vue` reads GitHub `main`,
+while `npx webflow-vue` resolves against the npm registry. A skill that calls a
+CLI command from the same release is broken for every consumer in the window
+between the two — pushing first hands them a skill whose first mandatory step
+prints `unknown command`. 0.2.0 hit exactly this: the skill's Step 1 calls
+`detect`, which does not exist in the published 0.1.0. Step 1 now degrades to a
+`curl`+`grep` fallback rather than hard-failing, but the ordering rule stands.
 
 ## Invariants
 
