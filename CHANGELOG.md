@@ -3,6 +3,71 @@
 All notable changes to `webflow-vue`. Versions are `0.0.x` and the API still
 moves; pin an exact version.
 
+## 0.2.0 — 2026-08-21
+
+### Added
+- **`npx webflow-vue detect <url>`** — fetches a published page and reports which
+  delivery route it is on, the pinned versions, the `mountIsland()` calls it can
+  read statically, and the failures that are visible without running anything:
+  both routes installed at once, a bridge still carrying its `SITE_ID`
+  placeholders, `{{ }}` on a page with no Vue, `{{ x.value }}`, foreign `v-*`
+  attributes, a line-wrapped `<script src>`. `--json` to branch on it. Takes a
+  file path as well as a URL.
+
+  It exists because the route question was being answered by guessing. The skill
+  told an agent to decide between "two script tags" and "a whole Vite project"
+  and then gave it only route-2 phases, so "continue working on this project" on
+  a route-1 page scaffolded a bundle, a bridge and a dev server that the working
+  page did not use. The answer was in the published HTML the whole time.
+
+### Fixed
+- **Rescued nodes are restored to their original parent**, not appended to the
+  island root. `cleanDOMForVue` has detached `<style>` and `script.w-json` before
+  mount since 0.0.6, but `restore()` put everything back at the root. A `<style>`
+  tolerates that — CSS applies from anywhere — which is why it survived two
+  releases; it surfaced as a live page's `w-embed` wrapper left empty with its
+  `<style>` reparented. A `script.w-json` does not tolerate it: Webflow's lightbox
+  reads the config from inside the link that owns it, so relocating it defeats
+  the entire purpose of rescuing it.
+
+  Vue rebuilds the subtree from its compiled render function, so the original
+  parent object is gone by the time `restore()` runs. The sweep now marks each
+  parent with a `data-webflow-vue-restore` attribute — attributes survive
+  compilation — finds it again afterwards, reinserts at the recorded index, and
+  removes the marker. If Vue rendered the parent away entirely (`v-if`), the node
+  still lands at the root, and the log says so instead of pretending.
+
+### Documentation
+- The skill is restructured around the route decision it already documented but
+  did not follow. Step 1 reads the published page before any MCP call; Step 2 is
+  an explicit gate; the phases are split into a three-step Route 1 track and the
+  existing Route 2 phases, each labelled. Adds a graduation procedure from route
+  1 to route 2, in an order that keeps the live page working.
+- Two measured facts behind that ordering (2026-08-21): `get_page_scripts`
+  returns 404 on a page whose only code is freeform custom code, so a route-1
+  install is invisible to it — while `get_page_freeform_code` reads it fine; and
+  `get_all_elements` does not expand component instances, so island markup
+  authored inside a Webflow component is missing from the page tree. A live page
+  with three mount roots reported two.
+- MCP tool and parameter names in the skill corrected against the live schemas:
+  `register_inline_script`, `add_page_script`, `get_registered_scripts`,
+  `designer_tool > get_current_page`, `display_name`, `source_code`. The old
+  names did not exist.
+- The skill's Phase 0 looked for `vueflow` in a project's dependencies. The
+  package has been called `webflow-vue` since 0.0.1, so the check never matched
+  and every route-2 run re-scaffolded.
+- README: the quick-start snippet destructured `Webflow Vue`, with a space —
+  a syntax error for anyone who copied it. Adds a CLI section.
+
+### Internal
+- `npm run verify:live <url>` — the testing doctrine, executable. Fetches a
+  published page, fetches the scripts that page loads, runs them in jsdom in the
+  page's own order, clicks a `v-on:click` element and asserts on rendered text.
+  `--local` substitutes `dist/webflow-vue.global.js` for the CDN copy, which
+  makes it a release gate: does the build about to ship still drive the page the
+  shipped build drives today? The restore bug above was found this way, by a
+  differential blank-element count, minutes after the harness first ran.
+
 ## 0.1.0 — 2026-08-20
 
 ### Changed — breaking

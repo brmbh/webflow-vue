@@ -1,6 +1,6 @@
 {
   "name": "webflow-vue",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.3",
@@ -11,7 +11,7 @@
     "vitest": "^2.1.9",
     "vue": "^3.5.15"
   },
-  "description": "Vue 3 islands on Webflow-rendered DOM — mount, shared state, and CMS parsing, with no build step required.",
+  "description": "Vue 3 islands on Webflow-rendered DOM \u2014 mount, shared state, and CMS parsing, with no build step required.",
   "license": "MIT",
   "author": "Jan Brombach",
   "homepage": "https://github.com/brmbh/webflow-vue",
@@ -60,7 +60,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "build:lib": "vite build --mode lib"
+    "build:lib": "vite build --mode lib",
+    "verify:live": "node scripts/verify-live.mjs"
   },
   "bin": {
     "webflow-vue": "bin/webflow-vue.js"

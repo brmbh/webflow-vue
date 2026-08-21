@@ -1,16 +1,26 @@
 var WebflowVue = function(exports, vue) {
   "use strict";
+  const RESTORE_MARK = "data-webflow-vue-restore";
+  const SWEEP_SELECTOR = 'script.w-json, script[type="application/json"], style';
   function cleanDOMForVue(rootEl, label = rootEl.id || "island") {
     const rescued = [];
-    for (const node of rootEl.querySelectorAll(
-      'script.w-json, script[type="application/json"], style'
-    )) {
-      rescued.push(node);
+    const marked = /* @__PURE__ */ new Map();
+    for (const node of rootEl.querySelectorAll(SWEEP_SELECTOR)) {
+      const parent = node.parentElement;
+      let key = null;
+      if (parent && parent !== rootEl) {
+        key = marked.get(parent) ?? String(marked.size);
+        if (!marked.has(parent)) {
+          marked.set(parent, key);
+          parent.setAttribute(RESTORE_MARK, key);
+        }
+      }
+      rescued.push({ node, key, index: parent ? [...parent.childNodes].indexOf(node) : 0 });
       node.remove();
     }
     if (rescued.length) {
-      const counts = rescued.reduce((acc, n) => {
-        const kind = n.tagName === "STYLE" ? "style" : "w-json";
+      const counts = rescued.reduce((acc, { node }) => {
+        const kind = node.tagName === "STYLE" ? "style" : "w-json";
         acc[kind] = (acc[kind] || 0) + 1;
         return acc;
       }, {});
@@ -25,9 +35,24 @@ var WebflowVue = function(exports, vue) {
       rescuedCount: rescued.length,
       /** Re-attach rescued nodes after Vue has taken over the subtree. */
       restore() {
-        for (const node of rescued) rootEl.appendChild(node);
+        let displaced = 0;
+        for (const { node, key, index } of rescued) {
+          const parent = key === null ? rootEl : rootEl.querySelector(`[${RESTORE_MARK}="${key}"]`);
+          if (!parent) {
+            rootEl.appendChild(node);
+            displaced += 1;
+            continue;
+          }
+          const at = parent.childNodes[index];
+          parent.insertBefore(node, at ?? null);
+        }
+        for (const parent of rootEl.querySelectorAll(`[${RESTORE_MARK}]`)) {
+          parent.removeAttribute(RESTORE_MARK);
+        }
         if (rescued.length) {
-          console.log(`[webflow-vue:clean] "${label}" restored ${rescued.length} node(s) post-mount`);
+          console.log(
+            `[webflow-vue:clean] "${label}" restored ${rescued.length} node(s) post-mount` + (displaced ? ` — ${displaced} to the island root, original parent gone` : "")
+          );
         }
       }
     };
@@ -423,7 +448,7 @@ var WebflowVue = function(exports, vue) {
     number,
     richText
   }, Symbol.toStringTag, { value: "Module" }));
-  const version = "0.1.0";
+  const version = "0.2.0";
   exports.cleanDOMForVue = cleanDOMForVue;
   exports.clearCollectionCache = clearCollectionCache;
   exports.extractors = extractors;
