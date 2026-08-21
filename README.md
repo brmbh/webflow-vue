@@ -23,7 +23,7 @@ mounts nothing):
 ```html
 <script>
   const { ref, computed } = Vue
-  const { mountIsland } = Webflow Vue
+  const { mountIsland } = WebflowVue
 
   mountIsland('#counter', 'counter', () => {
     const cups = ref(1)
@@ -44,6 +44,44 @@ mounts nothing):
 `vue.global.js` is required rather than the runtime-only build: an island's
 template *is* the live Webflow DOM, so the template compiler has to be present.
 
+## CLI
+
+```bash
+npx webflow-vue detect <url>    # read a published page and report what it is running
+npx webflow-vue init [dir]      # scaffold a project, when a page is not enough
+```
+
+`detect` fetches the published page and tells you which of the two delivery
+routes it is on — CDN script tags in page custom code, or a bridge backed by a
+project bundle — along with the pinned versions, the `mountIsland()` calls it can
+read, and the problems that are visible without running anything:
+
+```
+$ npx webflow-vue detect https://my-site.webflow.io/brew
+
+  route 1 — CDN tags in the page's own custom code. No project needed.
+
+    vue          3 — https://unpkg.com/vue@3/dist/vue.global.js
+    webflow-vue  0.1.0 — https://cdn.jsdelivr.net/npm/webflow-vue@0.1.0
+    mounts       brew → [data-brew]
+    markup       3 mustache(s), 1 directive(s)
+
+    1 warning(s)
+      ! foreign-directive
+        v-expand is not a Vue directive — Vue fails with "Failed to resolve
+        directive" and the whole island renders nothing
+```
+
+It catches, among others: both routes installed at once (two Vue instances that
+do not share reactivity), a bridge still carrying its `SITE_ID` placeholders,
+`{{ mustaches }}` on a page that loads no Vue — the usual symptom of island
+markup living inside a Webflow component that ships site-wide — `{{ x.value }}`,
+`v-*` attributes belonging to some other library, and a `<script src>` that got
+line-wrapped and 404s in silence.
+
+Run it before deciding anything, and again after publishing. It takes a local
+file path as well as a URL.
+
 ### Agent skill
 
 ```bash
@@ -51,7 +89,9 @@ npx skills add brmbh/webflow-vue
 ```
 
 Installs `webflow-vue-scaffold`, which drives the Webflow MCP to build islands for
-you — bridge install, DOM scaffold, matching Vue code, publish.
+you. It runs `detect` first and branches on the answer: a page already on route 1
+gets its custom code edited in place; only route 2 gets a bridge, a bundle and a
+dev server.
 
 ## API
 

@@ -1,53 +1,174 @@
 ---
 name: webflow-vue-scaffold
-description: Bootstrap or extend a Vue-on-Webflow hybrid mount on a target Webflow page. Scaffolds a Webflow Vue project with `npx webflow-vue init`, installs the bridge script via Webflow MCP, builds reactive DOM plus the matching Vue code, and publishes with auto-reload of the local Vite dev server. Also decides when no project is needed at all and two CDN script tags will do. Use when the user says "scaffold a Vue mount on Webflow", "set up Webflow Vue on this page", "add a Vue island to my Webflow page", "add reactivity to Webflow", "publish Webflow Vue changes", or "bootstrap the Webflow Vue bridge".
+description: Bootstrap or extend a Vue-on-Webflow hybrid mount on a target Webflow page. Reads the published page first with `npx webflow-vue detect` to establish which route the page is already on, then either edits its two CDN script tags in place (route 1) or drives a project — `npx webflow-vue init`, bridge install via Webflow MCP, reactive DOM plus matching Vue code, publish with auto-reload of the local Vite dev server (route 2). Use when the user says "scaffold a Vue mount on Webflow", "set up Webflow Vue on this page", "add a Vue island to my Webflow page", "add reactivity to Webflow", "publish Webflow Vue changes", "bootstrap the Webflow Vue bridge", or asks to continue working on an existing Webflow Vue page.
 license: MIT
 allowed-tools: Read Edit Bash mcp__claude_ai_Webflow__webflow_guide_tool mcp__claude_ai_Webflow__data_sites_tool mcp__claude_ai_Webflow__data_pages_tool mcp__claude_ai_Webflow__data_scripts_tool mcp__claude_ai_Webflow__data_element_tool mcp__claude_ai_Webflow__data_element_builder mcp__claude_ai_Webflow__data_element_settings_tool mcp__claude_ai_Webflow__data_style_tool mcp__claude_ai_Webflow__data_assets_tool
 ---
 
 # Webflow Vue Scaffold
 
-Orchestrate Vue-on-Webflow hybrid scaffolding: project bootstrap, bridge install, mount-point creation, code + DOM co-evolution, publish, and auto-reload of the local Vite dev server.
+Orchestrate Vue-on-Webflow hybrid work: read the page, pick the route, then either
+edit page custom code in place or drive a project — bootstrap, bridge install,
+mount-point creation, code + DOM co-evolution, publish, and auto-reload of the
+local Vite dev server.
 
-## First: does this user need a project at all?
+**The order is not negotiable.** Read the published page, decide the route from
+what it says, and only then pick a track. Most of this file is route 2; a page on
+route 1 needs none of it, and scaffolding a project onto one is the failure this
+structure exists to prevent.
 
-Two routes. Decide before touching anything.
+## Step 1 — read the published page, before any MCP call
 
-**Route 1 — no project.** One or two self-contained reactive widgets whose code
-fits in a Webflow code embed. Two script tags in the page head, the Vue in an
-embed placed *after* the island. No project, no bridge, no build, no dev server,
-and none of the phases below apply. Hand them this and stop:
+Do not ask the user which route they are on, and do not infer it from the
+conversation. The published page is the only artefact that cannot be wrong about
+what a page loads, and reading it costs one command:
+
+```bash
+npx webflow-vue detect https://<site>.webflow.io/<path>
+```
+
+Run this **first**, before `webflow_guide_tool`, before `list_sites`, before
+anything. It reports the route, the pinned versions, every `mountIsland()` call
+it can read, and the hygiene problems that are visible statically. `--json` if
+you want to branch on it programmatically.
+
+Two reasons it comes before the MCP and not after:
+
+- **Route-1 code lives in freeform page custom code.** The page element tree does
+  not contain it, and neither do registered scripts. `get_page_scripts` returns
+  **404 "Custom code block not found"** on a page that has only freeform code, and
+  reading that 404 as "no webflow-vue here" is exactly how an agent decides to
+  scaffold over a working widget. *(Measured 2026-08-21.)*
+- **`get_all_elements` does not expand component instances.** Island markup
+  authored inside a Webflow component is invisible in the page tree — a live page
+  with three `[data-brew]` roots reported two, because the third sat inside the
+  site header component. The published HTML had all three. *(Measured 2026-08-21.)*
+
+If the page is not published yet, say so and treat it as route 0. A page nobody
+can fetch is a page you cannot verify, and everything below ends in verification.
+
+## Step 2 — the route gate
+
+`detect` prints one of four verdicts. They are not advisory:
+
+| verdict | what it means | what you do |
+|---|---|---|
+| **route 1** | CDN tags in the page's own custom code | Work in **Route 1** below. Do **not** run `init`, do **not** install a bridge, do **not** start a dev server. |
+| **route 2** | a bridge script, backed by a project bundle | Work in **Route 2** below. |
+| **route 0** | neither — a clean page | Choose, with the user, using the table below. Default to route 1. |
+| **mixed** | both are installed | A bug, not a configuration. Vue and the library load twice and the two instances do not share reactivity. Fix that before anything else: pick the route the page's code actually uses and remove the other. |
+
+For route 0, the choice:
+
+| | Route 1 — by hand | Route 2 — with a project |
+|---|---|---|
+| delivery | 2 CDN script tags + page custom code | project, Vite build, bridge script |
+| needs this repo | no | yes |
+| needs the phases below | Route 1 only, three steps | Route 2, phases 0–6 |
+| when | one or two self-contained widgets | version control, a build, multiple pages |
+
+**Do not build route 2 for a counter.** Scaffolding a Vite project for a single
+widget is the wrong answer even though most of this skill is about route 2. The
+API is identical either way — same `WebflowVue` global, same `mountIsland` — so
+moving later costs nothing, and there is a documented procedure for it at the end
+of this file.
+
+Before either route, run the **Preflight** in § Guidelines. If the answer is
+"just use Finsweet", say so and stop.
+
+---
+
+# Route 1 — two script tags
+
+No project. No bridge. No build. No dev server. Nothing in Route 2 applies.
+
+Assumes only: Webflow MCP connected and authed, and a published page URL.
+
+### R1.1 — Read what is already there
+
+```
+data_scripts_tool > get_page_freeform_code(page_id)   # both head and footer
+```
+
+This is where route-1 code lives. `set_page_freeform_code` **replaces the entire
+block**, so read it before you write it and send back the merged content — a
+blind write silently deletes whatever else the page had in that block.
+
+For markup, prefer the `detect` output and the published HTML over the element
+tree; use `data_element_tool > get_all_elements(siteId, pageId)` when you need
+element IDs to edit. If an island lives inside a component, reach it with
+`designer_tool > open_component_view` — the page tree will not show it.
+
+### R1.2 — Plan, and get one confirmation
+
+Present current state, the proposed change, and the order. Require the user to
+type **"scaffold"** before any mutation, and **"publish"** before publishing.
+
+### R1.3 — Write the code and the markup
+
+The page code goes in the **footer** freeform block, because a code embed's
+scripts run at parse time and must come after the markup they mount (Rule 6):
 
 ```html
 <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/webflow-vue@0.1.0/dist/webflow-vue.global.js"></script>
+<script>
+  const { ref, computed } = Vue;
+  const { mountIsland } = WebflowVue;
+
+  mountIsland('[data-counter]', 'counter', () => {
+    const cups = ref(1);
+    const grams = computed(() => cups.value * 18);
+    return { cups, grams };
+  });
+</script>
 ```
 
-**Route 2 — a project.** Code that wants version control, a build step, real
-files, or behaviour spanning more than one page. That is what this skill drives.
+Pin the version. An unpinned tag is a page whose behaviour changes when the
+library publishes.
 
-**Do not build Route 2 for a counter.** Scaffolding a Vite project for a single
-widget is the wrong answer even though this skill is about Route 2. The API is
-identical either way — same `WebflowVue` global, same `mountIsland` — so moving
-from Route 1 to Route 2 later costs nothing.
+Markup rules are the same in both routes — see § DOM insert constraints. The one
+that bites first: anything carrying a directive must be a **Custom Element** with
+its attributes set at creation, in long form (`v-on:click`, never `@click`).
 
-## Important Note
+### R1.4 — Publish and verify
+
+```
+data_sites_tool > publish_site(site_id, publishToWebflowSubdomain: true)
+```
+
+Then **verify against the published page, not against the Designer**:
+
+```bash
+npx webflow-vue detect https://<site>.webflow.io/<path>
+```
+
+Expect route 1, the version you pinned, your mount call, and no warnings. If
+`detect` reports mustaches the page cannot fill, or a directive Vue cannot
+resolve, that is your change, and it is visible to visitors right now.
+
+There is no `touch src/main.js` step here. There is no dev server to reload.
+
+---
+
+# Route 2 — a project
+
+Everything below is route 2. If Step 2 said route 1, none of it applies.
 
 Assumes:
 - Webflow MCP is connected and authed
 - Webflow Designer is open on the target page (required for Designer-side actions in Phase 3 + 4)
-- A Webflow Vue project in the working directory — **Phase 0 creates one if absent**
+- A webflow-vue project in the working directory — **Phase 0 creates one if absent**
 - Local Vite dev server is running on `https://localhost:3000` (`npm run dev` in that project)
 - The user has the page open with `?debug` appended for live HMR
 
-ALWAYS call `mcp__webflow__webflow_guide_tool` first.
-
-## Instructions
+Call `mcp__claude_ai_Webflow__webflow_guide_tool` once before the first MCP call.
 
 ### Phase 0 — Project bootstrap (skip if a project already exists)
 
-A Webflow Vue project is a directory carrying `vueflow` in its `package.json`
-dependencies, `src/main.js` as its entry, and `webflow-vue-bridge.html` beside them.
+A webflow-vue project is a directory carrying **`webflow-vue`** in its
+`package.json` dependencies, `src/main.js` as its entry, and
+`webflow-vue-bridge.html` beside them.
 
 If it is absent, create it with the CLI. **Never hand-write these files** — the
 CLI pins the dependency to its own version and points the bridge at the matching
@@ -68,19 +189,25 @@ project's** files.
 
 ### Phase 1 — Discovery
 
-1. Confirm `site_id` and `page_id`. If not provided, ask.
-2. Call `webflow_guide_tool`.
-3. In parallel:
-   - `data_scripts_tool > list_registered_scripts(site_id)`
-   - `data_scripts_tool > get_page_script(page_id)` (404 = no scripts yet, fine)
-   - `de_page_tool > get_current_page(siteId)` to confirm Designer position
-4. Read the project's `webflow-vue-bridge.html` for the canonical bridge source.
-5. Read the project's `src/main.js` for current code state.
+Step 1 already told you the route. This fills in the IDs and the project state.
+
+1. Confirm `site_id` and `page_id` — `data_sites_tool > list_sites`, then
+   `data_pages_tool > list_pages(site_id)`. Match on `publishedPath`, which is the
+   thing that corresponds to the URL you fetched.
+2. In parallel:
+   - `data_scripts_tool > get_registered_scripts(site_id)`
+   - `data_scripts_tool > get_page_scripts(page_id)` — 404 means no registered
+     scripts on this page yet, which is fine
+   - `data_scripts_tool > get_page_freeform_code(page_id)` — catches a route-1
+     install the bridge would then collide with
+   - `designer_tool > get_current_page(siteId)` to confirm Designer position
+3. Read the project's `webflow-vue-bridge.html` for the canonical bridge source.
+4. Read the project's `src/main.js` for current code state.
 
 ### Phase 2 — Plan + Confirm
 
 Present:
-- Current state (existing scripts, existing DOM in `#app`, current code)
+- Current state (existing scripts, existing DOM in the mount root, current code)
 - Proposed change (bridge install / new variable / new DOM / publish-only)
 - Order of operations
 
@@ -91,19 +218,22 @@ Require explicit confirmation before any mutation:
 
 ### Phase 3 — Bridge Install (skip if already present)
 
-Skip if `get_page_script(page_id)` already lists the bridge.
+Skip if `get_page_scripts(page_id)` already lists the bridge.
 
-1. `data_scripts_tool > add_inline_site_script` — register at site level
-   - `displayName`: alphanumeric only, e.g. `Webflow VueBridge`
+1. `data_scripts_tool > register_inline_script` — register at site level
+   - `display_name`: alphanumeric only, e.g. `Webflow VueBridge`
    - `version`: `0.1.0` (increment on conflict)
-   - `location`: `footer`
-   - `canCopy`: `true`
-   - `sourceCode`: contents of the project's `webflow-vue-bridge.html` with `<script>` and `<!-- -->` stripped.
+   - `source_code`: contents of the project's `webflow-vue-bridge.html` with
+     `<script>` and `<!-- -->` stripped.
      **Replace `SITE_ID`, `STAGING_ASSET_ID` and `PROD_ASSET_ID` first** — the
      scaffolded bridge ships them as placeholders, and a bridge published with
-     them intact loads nothing outside `?debug`.
-2. `data_scripts_tool > upsert_page_script` — apply registered ID to target page footer
-3. `data_scripts_tool > get_page_script(page_id)` — verify
+     them intact loads nothing outside `?debug`. `detect` reports this as
+     `bridge-placeholders`; it is the most common route-2 failure.
+2. `data_scripts_tool > add_page_script` — apply the registered ID to the target
+   page, `location: "footer"`, `version` matching what you registered
+3. `data_scripts_tool > get_page_scripts(page_id)` — verify
+
+Page level only. Site-level and page-level together mounts Vue twice.
 
 ### Phase 4 — Code + DOM Change (parallel)
 
@@ -112,11 +242,11 @@ When adding a reactive variable + display:
 1. `Edit src/main.js`:
    - Add ref / computed / method inside `setup()`
    - Add the new key to the returned object
-2. `element_builder` — append to the `#app` element. **Default primitive: Custom Element (`type: "DOM"` + `set_dom_config: { dom_tag: "..." }`).** Set `dom_tag: "div"` when nothing more semantic applies. `set_text` carries `{{ interpolation }}`. `set_attributes` carries `v-on:*`, `v-bind:*`, `data-*`, `id`, etc.
+2. `data_element_builder` — append to the mount root. **Default primitive: Custom Element (`type: "DOM"` + `set_dom_config: { dom_tag: "..." }`).** Set `dom_tag: "div"` when nothing more semantic applies. `set_text` carries `{{ interpolation }}`. `set_attributes` carries `v-on:*`, `v-bind:*`, `data-*`, `id`, etc.
    - Long-form Vue directives only: `v-on:click` (NOT `@click`), `v-bind:class` (NOT `:class`)
 3. Both edits are independent — run in parallel.
 
-**Never use `whtml_builder` for markup that carries directives.** It silently drops every `v-*` attribute and `ref`. Classes, `data-*`, text and `{{ }}` survive, so the result looks correct and is inert. Use it only for inert layout, or not at all.
+**Never use `data_whtml_builder` for markup that carries directives.** It silently drops every `v-*` attribute and `ref`. Classes, `data-*`, text and `{{ }}` survive, so the result looks correct and is inert. Use it only for inert layout, or not at all.
 
 ### Phase 5 — Publish + Auto-Reload
 
@@ -128,44 +258,99 @@ The `touch` is the trick that ties Webflow publishes to Vite HMR. Without it, th
 
 ### Phase 6 — Verify
 
-1. Tell the user to check the `?debug` page on the live URL (the browser should already have reloaded).
-2. Optional: `element_snapshot_tool` for visual confirmation.
+1. `npx webflow-vue detect <published url>` — expect route 2, no warnings.
+2. Tell the user to check the `?debug` page on the live URL (the browser should
+   already have reloaded).
+3. Optional: `element_snapshot_tool` for visual confirmation.
+
+A publish that `detect` cannot confirm is not a publish that worked.
+
+---
+
+## Graduating route 1 → route 2
+
+Route 1 stops paying when a second page needs the same behaviour, when the code
+outgrows what anyone wants to edit in a textarea, or when it needs to be in git.
+Moving is mechanical because the API does not change — only the delivery does.
+
+**Migrate when** any of: the code is wanted in version control; two or more pages
+share behaviour; the island needs npm dependencies or a build step; more than one
+person edits it.
+
+**Do not migrate** for size alone. A single 40-line widget in page custom code is
+a feature of route 1, not a symptom.
+
+The order matters, because the live page must keep working throughout:
+
+1. `npx webflow-vue init <dir>` and `npm install`. Pin the same library version
+   the page currently loads — `detect` prints it — so the migration changes one
+   thing at a time.
+2. Move the page's island code into `src/main.js` verbatim, converting the two
+   globals to imports: `const { ref } = Vue` → `import { ref } from 'vue'`, and
+   `const { mountIsland } = WebflowVue` → `import { mountIsland } from 'webflow-vue'`.
+   Nothing else changes. The markup does not change at all.
+3. `npm run dev`, open the live page with `?debug`. The bridge is not installed
+   yet, so the page is still running its route-1 code — that is intentional. Fix
+   the bundle until it is right.
+4. Install the bridge (Phase 3), with the placeholders filled.
+5. **Now remove the route-1 script tags from the page's freeform footer block** —
+   read the block, delete only those tags, write the remainder back. Leaving them
+   is the `mixed` verdict: two copies of Vue, two reactivity contexts, and state
+   that mysteriously does not sync.
+6. Publish, then `npx webflow-vue detect <url>`. Expect route **2** and no
+   warnings. If it still says `mixed`, step 5 did not take.
+
+Steps 4 and 5 are the only window where the page can be broken, so do them in one
+sitting and verify immediately.
 
 ## Examples
 
-### Example 1: Bootstrap a counter island on a fresh page
+### Example 1: A single counter on a fresh page
 
 **User:** "Set up Webflow Vue on the VUE MCP page of the Accessible Components site."
 
-1. Discovery → no scripts, empty body
-2. Plan: register `Webflow VueBridge`, insert `<div id="app">{{ count }}</div>` with +1/-1 buttons
-3. Wait for "install bridge" + "scaffold"
-4. Register + apply + insert (parallel where possible)
-5. Wait for "publish"
-6. `publish_site` + `touch src/main.js`
-7. Verify on `?debug` URL
+1. `detect` → route 0, no mustaches, nothing installed
+2. One widget, one page → **route 1**. Say so, and say why, so the user can
+   disagree before anything is written.
+3. Plan: two script tags plus a mount call in the page footer block; insert
+   `<div data-counter>{{ cups }}</div>` with a `v-on:click` Custom Element
+4. Wait for "scaffold" → write freeform footer + insert markup
+5. Wait for "publish" → `publish_site`
+6. `detect` again → route 1, mount found, no warnings
 
-### Example 2: Add a reactive variable to an existing mount
+### Example 2: Add a reactive variable to an existing route-2 mount
 
 **User:** "Add a `status` computed that flips with `count`, and show it in the page."
 
-1. Discovery → bridge installed, `#app` exists with counter
-2. Plan: add `status` computed in `main.js`, append `<p>Status: {{ status }}</p>` inside `#app`
-3. Wait for "scaffold"
-4. `Edit src/main.js` + `element_builder` in parallel
-5. Wait for "publish"
-6. `publish_site` + `touch src/main.js`
-7. Verify on `?debug` URL
+1. `detect` → route 2, bridge pinned at 0.1.0
+2. Discovery → bridge installed, mount root exists with the counter
+3. Plan: add `status` computed in `main.js`, append `<p>Status: {{ status }}</p>` inside the root
+4. Wait for "scaffold"
+5. `Edit src/main.js` + `data_element_builder` in parallel
+6. Wait for "publish"
+7. `publish_site` + `touch src/main.js`
+8. `detect` → no warnings; verify on the `?debug` URL
 
-### Example 3: Publish-only
+### Example 3: "Continue working on this project"
+
+The prompt that this skill's structure exists to survive. There is no project in
+the working directory and no context about one.
+
+1. `detect` on the page the user names → **route 1**, webflow-vue@0.1.0, one mount
+2. **Stop.** Do not run `init`. The correct answer is to edit the page's freeform
+   footer block, and scaffolding a Vite project here would leave the user with a
+   dev server, a bundle and a bridge that their working page does not use.
+3. Route 1, R1.1 onward.
+
+### Example 4: Publish-only
 
 **User:** "Publish the changes I just made in Designer."
 
-1. Discovery → confirm scripts present
-2. Plan: publish only, no mutations to scripts or DOM
+1. `detect` → confirm the route and that nothing is already broken
+2. Plan: publish only, no mutations
 3. Wait for "publish"
-4. `publish_site` + `touch src/main.js`
-5. Verify
+4. `publish_site` (+ `touch src/main.js` on route 2 only)
+5. `detect` again
 
 ## Guidelines
 
@@ -241,7 +426,7 @@ first page.
 the better choice once the item count makes our own walk unreasonable. It has the
 same prerequisite — it returns early when no pagination elements exist.
 
-### element_builder quirks that cost real time
+### data_element_builder quirks that cost real time
 
 - **`set_text` and `settings` inside `children[]` are silently ignored.** The
   element is created, the text is not applied — every TextBlock ends up holding
@@ -265,7 +450,7 @@ On custom elements created via `BY_CUSTOM_TAG` with `set_attributes` at creation
 all of these reached the published page intact: `v-for`, `v-if`, `v-model`,
 `v-model.number`, `v-bind:value`, `v-bind:key`, `v-on:click`, and `{{ }}` in
 bound text. The earlier "Webflow strips every `v-*`" rule applies to
-`whtml_builder`, not to this path.
+`data_whtml_builder`, not to this path.
 
 ### Designer-only steps: ask, do not engineer around (added 2026-08-19)
 
@@ -278,7 +463,7 @@ Known Designer-only actions:
 
 | Need | Why the API can't | Ask the user to |
 |---|---|---|
-| Pagination **elements** on a Collection List | the `pagination` *setting* is writable via API (`{itemsPerPage:N}`) and takes effect, but `element_builder` has no pagination element type, so no `…_page` token and no `w-pagination-next` are emitted | select the Collection List → Settings (D) → Collection List Settings → **Paginate Items**, set items per page |
+| Pagination **elements** on a Collection List | the `pagination` *setting* is writable via API (`{itemsPerPage:N}`) and takes effect, but `data_element_builder` has no pagination element type, so no `…_page` token and no `w-pagination-next` are emitted | select the Collection List → Settings (D) → Collection List Settings → **Paginate Items**, set items per page |
 | Native Lightbox media items | not writable through any MCP surface | select each Lightbox link → Settings → add media |
 
 How to ask: name the element, give the exact click path, say what you will do
@@ -435,15 +620,15 @@ accordion ships `v-expand` — and Vue fails with "Failed to resolve directive"
 and renders nothing. Check the subtree for `v-` attributes that are not yours.
 
 ### Bridge install constraints
-- 2000-char limit on inline `sourceCode`
-- No `<script>` tags or external `<script src=...>` allowed inside `sourceCode` — Webflow wraps it in a `<script>` itself
-- `displayName` must be alphanumeric only (1–50 chars). No hyphens, dots, underscores.
+- 2000-char limit on inline `source_code`
+- No `<script>` tags or external `<script src=...>` allowed inside `source_code` — Webflow wraps it in a `<script>` itself
+- `display_name` must be alphanumeric only (1–50 chars). No hyphens, dots, underscores.
 - Page-level scripts must reference site-registered scripts by ID; always register first
 
 ### DOM insert constraints
 
 **Rule 1 — anything carrying a directive must be a Custom Element, with its
-attributes set at creation.** `element_builder`, `type: "DOM"`,
+attributes set at creation.** `data_element_builder`, `type: "DOM"`,
 `set_dom_config: { dom_tag: "..." }`, `set_attributes` in the same call.
 
 A Custom Element stores `data.attributes` as a first-class array — that is the
@@ -486,7 +671,7 @@ contract — mount ids, behavioural hooks. Presentation classes belong to the
 project's design system. Never invent `vf-card`-style classes.
 
 ### CSS via the API
-- `whtml_builder`'s `css` param rejects nested and descendant selectors
+- `data_whtml_builder`'s `css` param rejects nested and descendant selectors
   (`.a .b`). Single-class selectors only — flatten, or create the style with
   `data_style_tool`.
 - `data_style_tool > create_style` errors if the style already exists. Check
@@ -498,8 +683,24 @@ project's design system. Never invent `vf-card`-style classes.
 - Only fires when this skill drives the publish — direct publishes from the Webflow Designer UI bypass the trigger
 
 ### Failure modes
+
+Run `npx webflow-vue detect <url>` before diagnosing any of these. It names most
+of them from the published HTML alone, and it is faster than reasoning about what
+the Designer shows.
+
+- Visitors see literal `{{ braces }}` on a page → that markup is inside a Webflow
+  **component**, so it ships on every page using that component, while the mount
+  call only exists on one. `detect` reports `mustaches-without-library` on the
+  other pages. Either move the markup out of the component, or load the island
+  code site-wide.
 - Directives missing from the published page but present in the Designer → markup
-  was inserted with `whtml_builder`. Rebuild those elements as Custom Elements.
+  was inserted with `data_whtml_builder`. Rebuild those elements as Custom Elements.
+- An island renders empty text where the markup asked for a value → `setup()` does
+  not return that key. Vue's dev build says so (`Property "x" was accessed during
+  render but is not defined`); the prod build the bridge ships says nothing, so
+  check the markup ↔ bundle contract directly.
+- State does not sync between two islands that should share it → two Vue instances.
+  `detect` reports `mixed`: a bridge and a static CDN tag are both installed.
 - An island renders nothing and the console is silent → mount target existed but
   `setup()` never supplied what the markup asks for. Check the markup ↔ bundle
   contract before anything else.
@@ -507,9 +708,9 @@ project's design system. Never invent `vf-card`-style classes.
   or bundle ran before the markup existed. See Rule 6.
 - 404 on `add_page_script` for a freshly created page → the custom-code block
   doesn't exist yet. Use `set_page_scripts` to create it.
-- `update_registered_script` 404s → re-register the same `displayName` with a
+- `update_registered_script` 404s → re-register the same `display_name` with a
   bumped version, then re-apply with `set_page_scripts`.
-- 4xx on `add_inline_site_script` → almost always the alphanumeric `displayName` rule
+- 4xx on `register_inline_script` → almost always the alphanumeric `display_name` rule
 - Designer tool returns "no element selected" or empty tree → Designer not open on the target page; ask user to switch
 - Vite dev server not running → tell user to `npm install && npm run dev`
 - mkcert cert not trusted by browser → WebSocket fails silently, HMR doesn't fire. Re-run `npm run dev` and accept the cert prompt.
