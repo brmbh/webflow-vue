@@ -354,16 +354,39 @@ dereferences `STAGING_BUNDLE` or `PROD_BUNDLE`. So **the placeholders do not blo
 `?debug`** — a bridge installed with `SITE_ID` intact gives a working dev loop.
 They block everyone else: outside `?debug` that bridge loads no bundle at all.
 
-### The two implementations must never overlap
+### The two implementations must never overlap — measured 2026-08-21
 
-The route-1 tags and the bridge cannot both be live. They load two separate copies
-of the library, each with its own mount registry, so the idempotence guard in
-`mountIsland` does not see across them — both try to mount the same roots. Remove
-the tags in the same sitting you install the bridge.
+The route-1 tags and the bridge cannot both be live. Measured in jsdom against
+the published `webflow-vue@0.2.0` global build, evaluated twice in one window:
 
-That is why the bundle is built and uploaded **before** the tags come out: at the
-moment you remove them, the bridge must already have something to load, or every
-visitor who is not using `?debug` gets an unmounted page.
+- `A === B` is **false**, and so is `A.mountIsland === B.mountIsland`. Each
+  evaluation of the IIFE closes over its own `mounted` WeakMap, so the
+  idempotence guard **cannot see across copies**. The second copy does not skip;
+  it logs a normal successful mount.
+- Mounting the second copy on a root the first already owns throws
+  **`Cannot read properties of null (reading 'nextSibling')`**, the island's
+  rendered content is destroyed (`textContent` becomes empty), and it is dead —
+  a click on a `v-on:click` element changes nothing. Vue additionally warns
+  *"There is already an app instance mounted on the host container."*
+- Control, same run: **one** copy mounted twice on the same root does not throw,
+  the guard skips the second mount, and the island stays reactive. The cause is
+  the two copies, not double-mounting as such.
+
+**This shares its signature with the 0.0.4 double-mount bug**, which threw the
+same `nextSibling` error before `mountIsland` had a guard at all. Do not read it
+as a regression of that fix — the guard is working; it simply has no visibility
+into a second copy of the library. The tell is `A === B` being false, not the
+error text.
+
+One caveat worth knowing: on a trivial island — interpolation only, no
+directives — the same double mount does **not** throw. It silently leaves the
+markup looking correct and inert. Absence of the crash is not evidence of
+absence of the problem.
+
+Remove the tags in the same sitting you install the bridge. And that is why the
+bundle is built and uploaded **before** the tags come out: at the moment you
+remove them, the bridge must already have something to load, or every visitor who
+is not using `?debug` gets an unmounted page.
 
 ### The order
 

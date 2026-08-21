@@ -448,7 +448,7 @@ var WebflowVue = function(exports, vue) {
     number,
     richText
   }, Symbol.toStringTag, { value: "Module" }));
-  const version = "0.2.0";
+  const version = "0.2.1";
   exports.cleanDOMForVue = cleanDOMForVue;
   exports.clearCollectionCache = clearCollectionCache;
   exports.extractors = extractors;

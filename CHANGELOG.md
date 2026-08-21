@@ -3,6 +3,62 @@
 All notable changes to `webflow-vue`. Versions are `0.0.x` and the API still
 moves; pin an exact version.
 
+## 0.2.1 — 2026-08-21
+
+Everything here landed after 0.2.0 was packed, so the published 0.2.0 tarball is
+a mid-edit snapshot missing all of it.
+
+### Fixed
+- **A cold install no longer hard-fails when `detect` is unavailable.** The skill
+  ships from GitHub via `npx skills add`; the CLI it calls ships from npm. They
+  release on independent timelines, so a consumer who installs the skill before
+  the matching package is published gets a Step 1 that prints
+  `unknown command: detect` — and Step 1 gates everything below it. Step 1 now
+  states its version floor and falls back to `curl` + `grep`, verified against a
+  live route-1 page and a live route-0 page. The `|| echo` in that snippet is
+  load-bearing: `grep` exits non-zero on no match, so chaining the checks with
+  `&&` abandons them after the first miss. 0.2.0 shipped the earlier form, which
+  had that flaw.
+- **The skill's prerequisites are stated before Step 1**, not inside the Route 2
+  section. The 0.2.0 restructure left them there, so a route-1 consumer never saw
+  "you need the Webflow MCP connected" or "you need a published URL" — both of
+  which Step 1 itself depends on.
+- **`detect` says why a fetch failed.** Node's fetch throws a bare `fetch failed`
+  and hides the reason — DNS, TLS, offline — in `err.cause`. It is the first
+  command a new user runs, so an opaque failure there is the worst place for one.
+
+### Documentation
+- **§ Ask, do not assume.** The skill had approval gates ("scaffold", "publish")
+  but no decision points, so *where the project goes* was decided silently by
+  `init <dir>` in both Phase 0 and the graduation. Names the four decisions with
+  more than one defensible answer, each with its default, and says plainly that a
+  nested project inside an existing repo is undocumented territory.
+- **The graduation order was wrong in three ways**, all found by describing the
+  intended journey out loud — prototype in Webflow custom code, then have the
+  agent lift it into a project and hand back the live page on local Vite:
+  it told the agent to open the page with `?debug` before installing the bridge
+  (`?debug` *is* a bridge feature; with no bridge nothing reads it); it never
+  built or uploaded the bundle the placeholders point at; and installing the
+  bridge before removing the route-1 tags left every non-`?debug` visitor with an
+  unmounted page. The bundle now exists before the tags come out, so there is no
+  dark window. Adds a duplicate-page variant for pages with real traffic.
+- **The two-copies constraint, measured (2026-08-21)** rather than reasoned.
+  Against the published 0.2.0 global build evaluated twice in one jsdom window:
+  `A === B` is false, each copy closes over its own `mounted` WeakMap, and the
+  guard cannot see across them. The second mount throws `Cannot read properties
+  of null (reading 'nextSibling')`, destroys the island's rendered content and
+  leaves it dead. Control in the same run: one copy mounted twice does not throw
+  and stays reactive, so the cause is the two copies, not double-mounting.
+  It shares its signature with the 0.0.4 double-mount bug and should not be read
+  as a regression of it — the tell is `A === B`, not the error text. On a trivial
+  island with no directives the same double mount is silent and merely inert.
+
+### Internal
+- Release order is now **push, then publish**, so the published tarball always
+  corresponds to a public commit. The window that creates is handled by requiring
+  every skill step that calls a new CLI feature to state a version floor and
+  degrade without it, not by reversing the order.
+
 ## 0.2.0 — 2026-08-21
 
 ### Added

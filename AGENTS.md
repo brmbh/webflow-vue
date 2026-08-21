@@ -121,21 +121,26 @@ Never assert one without verifying it, and date it when you write it down.
    doctrine exists.
 4. Add a CHANGELOG entry. Say what broke and why, not just what changed.
 5. Commit and `git tag -a vX.Y.Z`.
-6. **`npm publish` must be run by Jan.** It is blocked for agents, and it needs
+6. **`git push origin main --follow-tags` first.** The published tarball must
+   correspond to a commit that exists publicly; publishing first can leave npm
+   holding bytes that no public commit reproduces.
+7. **`npm publish` must be run by Jan.** It is blocked for agents, and it needs
    his 2FA-bypass token. Hand him the command; do not try to work around it.
-7. Confirm the registry has the new version, then `git push origin main
-   --follow-tags`. That order matters — see below.
 8. Verify after: registry version, the jsDelivr URL returning 200, and its
    sha256 matching the local build. jsDelivr lags the registry by about a minute.
 
-**Publish npm before pushing GitHub.** The skill ships from two places on
-independent timelines: `npx skills add brmbh/webflow-vue` reads GitHub `main`,
-while `npx webflow-vue` resolves against the npm registry. A skill that calls a
-CLI command from the same release is broken for every consumer in the window
-between the two — pushing first hands them a skill whose first mandatory step
-prints `unknown command`. 0.2.0 hit exactly this: the skill's Step 1 calls
-`detect`, which does not exist in the published 0.1.0. Step 1 now degrades to a
-`curl`+`grep` fallback rather than hard-failing, but the ordering rule stands.
+**Push, then publish — and never let the skill hard-depend on an unreleased CLI.**
+The skill ships from two places on independent timelines: `npx skills add
+brmbh/webflow-vue` reads GitHub `main`, while `npx webflow-vue` resolves against
+the npm registry. Pushing first means there is a window where the skill on GitHub
+calls a CLI feature npm has not shipped yet. 0.2.0 hit exactly this: Step 1 calls
+`detect`, absent from the published 0.1.0.
+
+The fix for that is **not** to reverse the order — traceability wins, and a
+published artifact should always correspond to a public commit. The fix is that
+any skill step calling a new CLI feature must state its version floor and degrade
+without it, the way Step 1 now falls back to `curl`+`grep`. Keep that property and
+the ordering is safe.
 
 ## Invariants
 
