@@ -195,3 +195,71 @@ describe('style blocks inside an island', () => {
     expect(document.querySelector('#island span').textContent).toBe('1');
   });
 });
+
+/**
+ * Surviving is not the same as being put back. Until 0.2.0 every rescued node
+ * was appended to the island root, which a `<style>` tolerates — CSS applies
+ * from anywhere — so the defect stayed invisible until a live page showed an
+ * emptied `w-embed` wrapper. A `script.w-json` does not tolerate it: Webflow's
+ * lightbox reads the config from inside the link that owns it.
+ */
+describe('rescued nodes go back where they came from', () => {
+  it('restores a style block into its original wrapper, not the island root', () => {
+    document.body.innerHTML =
+      '<div id="island">' +
+      '<div class="custom-style w-embed"><style>.x { color: red }</style></div>' +
+      '<span>{{ n }}</span></div>';
+
+    mountIsland('#island', 'styled', () => ({ n: ref(1) }));
+
+    const style = document.querySelector('style');
+    expect(style.parentElement.className).toBe('custom-style w-embed');
+    expect(style.parentElement.id).not.toBe('island');
+  });
+
+  it('restores a lightbox config inside the link that owns it', () => {
+    document.body.innerHTML =
+      '<div id="island">' +
+      '<a class="w-lightbox"><img><script class="w-json" type="application/json">{"items":[]}<\/script></a>' +
+      '<span>{{ n }}</span></div>';
+
+    mountIsland('#island', 'lightboxed', () => ({ n: ref(1) }));
+
+    const config = document.querySelector('script.w-json');
+    expect(config.closest('.w-lightbox')).not.toBeNull();
+    expect(config.textContent).toBe('{"items":[]}');
+  });
+
+  it('keeps its position among siblings', () => {
+    document.body.innerHTML =
+      '<div id="island"><div class="wrap">' +
+      '<b>before</b><style>.x{}</style><b>after</b>' +
+      '</div><span>{{ n }}</span></div>';
+
+    mountIsland('#island', 'ordered', () => ({ n: ref(1) }));
+
+    const kids = [...document.querySelector('.wrap').children].map((el) => el.tagName);
+    expect(kids).toEqual(['B', 'STYLE', 'B']);
+  });
+
+  it('leaves no restore markers in the published DOM', () => {
+    document.body.innerHTML =
+      '<div id="island"><div class="w-embed"><style>.x{}</style></div><span>{{ n }}</span></div>';
+
+    mountIsland('#island', 'marked', () => ({ n: ref(1) }));
+
+    expect(document.querySelectorAll('[data-webflow-vue-restore]')).toHaveLength(0);
+    expect(document.body.innerHTML).not.toContain('webflow-vue-restore');
+  });
+
+  it('falls back to the island root when Vue renders the parent away', () => {
+    document.body.innerHTML =
+      '<div id="island"><div v-if="show"><style>.x{}</style></div><span>{{ n }}</span></div>';
+
+    mountIsland('#island', 'conditional', () => ({ n: ref(1), show: ref(false) }));
+
+    const style = document.querySelector('style');
+    expect(style).not.toBeNull();
+    expect(style.parentElement.id).toBe('island');
+  });
+});
