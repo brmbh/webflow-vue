@@ -20,7 +20,7 @@ mcp__webflow__element_builder({
     set_text: { text: "{{ greeting }}" },         // works on DOM type
     set_attributes: { attributes: [
       { name: "v-on:click", value: "count++" },
-      { name: "data-vueflow-bind", value: "greeting" }
+      { name: "data-webflow-vue-bind", value: "greeting" }
     ]}
   }
 })
@@ -71,14 +71,14 @@ data_scripts_tool > add_inline_site_script {
 }
 ```
 
-Returns a script `id` (lowercase displayName, e.g. `vueflowbridge`). Remember it.
+Returns a script `id` (lowercase displayName, e.g. `webflowvuebridge`). Remember it.
 
 ### 1.3 Apply the registered script to the target page
 
 ```
 data_scripts_tool > upsert_page_script {
   page_id,
-  scripts: [{ id: "vueflowbridge", version: "0.1.0", location: "footer" }]
+  scripts: [{ id: "webflowvuebridge", version: "0.1.0", location: "footer" }]
 }
 ```
 

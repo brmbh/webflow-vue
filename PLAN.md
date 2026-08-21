@@ -5,7 +5,18 @@ Written 2026-08-16.
 
 ---
 
-## ▶ RESUME HERE (last touched 2026-08-19)
+## ▶ SUPERSEDED — read `AGENTS.md` instead (2026-08-20)
+
+**This document is design history, not current state.** It was written before the
+rename and before the package shipped. `webflow-vue@0.1.0` is published, the test
+suite is at 31, and the phase numbering below no longer maps to reality: the CLI
+has `init` only, and `auditContract` / `verifyMount` / `doctor` / `verify` are
+still unbuilt. The verification loops in §2 and the contract-scanner design in
+`PACKAGE.md` §3 are the parts still worth reading.
+
+Everything below is preserved as the record of how the design was arrived at.
+
+### Original resume note (2026-08-19)
 
 **Phase 1 complete, gate green.** `npm test` → 5/5 passing.
 
@@ -78,7 +89,7 @@ pre-existing work — untouched.
 
 | # | Decision | Options | My recommendation |
 |---|---|---|---|
-| 1 | npm name | `vueflow` · `@vueflow/core` · `@brmbh/webflow-vue` — **all four checked, all available** | `@vueflow/core`, scope reserved now. Room for `@vueflow/cli` later without renaming. |
+| 1 | npm name | `vueflow` · `webflow-vue` · `@brmbh/webflow-vue` — **all four checked, all available** | `webflow-vue`, scope reserved now. Room for `@vueflow/cli` later without renaming. |
 | 2 | GitHub repo | `Schmandarine/vueflow` public · private-then-flip | Public from the first commit. History is clean; nothing to hide. |
 | 3 | `doctor` target site | jan-blank-sandbox · a throwaway site | Sandbox for our runs; `doctor` takes `--site` so users point it at their own. |
 
@@ -90,7 +101,7 @@ Everything below assumes yes to all three. Say otherwise and I adjust.
 
 **Ships:**
 
-- `@vueflow/core` — `mountIsland`, `useSharedStore`, `useWebflowCMS`, `cleanDOMForVue`, `auditContract`, `verifyMount`, `configure`
+- `webflow-vue` — `mountIsland`, `useSharedStore`, `useWebflowCMS`, `cleanDOMForVue`, `auditContract`, `verifyMount`, `configure`
 - `npx webflow-vue` — `init`, `doctor`, `verify`
 - `webflow-vue-scaffold` skill, rules dated and attributed
 - Two live examples + one local harness
@@ -98,7 +109,7 @@ Everything below assumes yes to all three. Say otherwise and I adjust.
 
 **Explicitly not in v0.1:**
 
-- `vueflow deploy` (build → upload → bump bridge → publish). Convenience, not differentiation. v0.2.
+- `webflow-vue deploy` (build → upload → bump bridge → publish). Convenience, not differentiation. v0.2.
 - Any presentation CSS. Ever.
 - Anything wrapping `ref` / `computed` / `watch`.
 
@@ -184,7 +195,7 @@ then assert the produced page mechanically — the same assertions as Loop C.
 
 ### The insight that makes `verify` cheap
 
-`vueflow verify` is **not** a second implementation. It is Loop D's harness
+`webflow-vue verify` is **not** a second implementation. It is Loop D's harness
 pointed at any page: fetch published HTML → jsdom → load bundle → let
 `mountIsland` run its normal audit → collect `[webflow-vue:contract]` output → exit
 non-zero if non-empty.

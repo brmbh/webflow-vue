@@ -1,4 +1,4 @@
-# @vueflow/core — package surface (draft)
+# webflow-vue — package surface (draft)
 
 Draft for review. Nothing here is built yet except the pieces that already exist
 in `src/` and in `haufe-fjc/src/`.
@@ -72,7 +72,7 @@ import {
   auditContract,
   verifyMount,
   configure,
-} from '@vueflow/core';
+} from 'webflow-vue';
 ```
 
 ### `mountIsland(target, options)`

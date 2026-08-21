@@ -54,7 +54,7 @@ If Claude diverges from this, redirect it. Expected MCP call sequence:
        { name: "v-model", value: "query" },
        { name: "type", value: "text" },
        { name: "placeholder", value: "Filter posts…" },
-       { name: "data-vueflow-bind", value: "query" }
+       { name: "data-webflow-vue-bind", value: "query" }
      ]}
    }
    ```
