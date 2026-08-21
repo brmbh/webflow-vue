@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { mountIsland, mountIslands, unmountIsland } from '../src/mountIsland.js';
+import { mountIsland, unmountIsland } from '../src/mountIsland.js';
 import { ref, computed } from 'vue';
 
 /**
@@ -58,9 +58,9 @@ describe('mountIsland', () => {
     document.body.innerHTML = '<div id="somewhere-else"></div>';
     const setup = vi.fn();
 
-    const app = mountIsland('#not-here', 'absent', setup);
+    const apps = mountIsland('#not-here', 'absent', setup);
 
-    expect(app).toBeNull();
+    expect(apps).toEqual([]);
     expect(setup).not.toHaveBeenCalled();
   });
 
@@ -98,8 +98,8 @@ describe('re-mounting (page-transition safety)', () => {
   it('is a no-op when the same element is mounted twice', () => {
     document.body.innerHTML = '<div id="island"><button v-on:click="n++">go</button><span>{{ n }}</span></div>';
     const setup = () => ({ n: ref(1) });
-    const first = mountIsland('#island', 'once', setup);
-    const second = mountIsland('#island', 'once', setup);
+    const [first] = mountIsland('#island', 'once', setup);
+    const [second] = mountIsland('#island', 'once', setup);
     expect(second).toBe(first);
     document.querySelector('#island button').click();
     return Promise.resolve().then(() => {
@@ -115,25 +115,25 @@ describe('re-mounting (page-transition safety)', () => {
     // What barba/swup do: replace the container's contents wholesale.
     document.querySelector('#wrap').innerHTML = '<div id="island"><span>{{ n }}</span></div>';
     const revived = mountIsland('#island', 'swap', () => ({ n: ref(7) }));
-    expect(revived).not.toBeNull();
+    expect(revived).toHaveLength(1);
     expect(document.querySelector('#island span').textContent).toBe('7');
   });
 
   it('unmountIsland allows a deliberate remount of the same element', () => {
     document.body.innerHTML = '<div id="island"><span>{{ n }}</span></div>';
     mountIsland('#island', 'again', () => ({ n: ref(1) }));
-    expect(unmountIsland('#island')).toBe(true);
+    expect(unmountIsland('#island')).toBe(1);
     document.querySelector('#island').innerHTML = '<span>{{ n }}</span>';
     mountIsland('#island', 'again', () => ({ n: ref(5) }));
     expect(document.querySelector('#island span').textContent).toBe('5');
   });
 });
 
-describe('mountIslands (many mount points, one setup)', () => {
+describe('mountIsland with many matches (one setup, many mount points)', () => {
   it('mounts every match, not just the first', () => {
     document.body.innerHTML =
       '<div class="card"><span>{{ n }}</span></div>'.repeat(3);
-    const apps = mountIslands('.card', 'card', () => ({ n: ref(0) }));
+    const apps = mountIsland('.card', 'card', () => ({ n: ref(0) }));
     expect(apps).toHaveLength(3);
     expect([...document.querySelectorAll('.card span')].map((s) => s.textContent))
       .toEqual(['0', '0', '0']);
@@ -142,7 +142,7 @@ describe('mountIslands (many mount points, one setup)', () => {
   it('gives each instance its own state by default', async () => {
     document.body.innerHTML =
       '<div class="card"><button v-on:click="n++">+</button><span>{{ n }}</span></div>'.repeat(2);
-    mountIslands('.card', 'card', () => ({ n: ref(0) }));
+    mountIsland('.card', 'card', () => ({ n: ref(0) }));
     document.querySelectorAll('.card button')[0].click();
     await Promise.resolve();
     expect([...document.querySelectorAll('.card span')].map((s) => s.textContent))
@@ -153,31 +153,31 @@ describe('mountIslands (many mount points, one setup)', () => {
     document.body.innerHTML =
       '<div class="card" data-price="10"><span>{{ label }}</span></div>' +
       '<div class="card" data-price="25"><span>{{ label }}</span></div>';
-    mountIslands('.card', 'card', (el, i) => ({ label: `${i}:${el.dataset.price}` }));
+    mountIsland('.card', 'card', (el, i) => ({ label: `${i}:${el.dataset.price}` }));
     expect([...document.querySelectorAll('.card span')].map((s) => s.textContent))
       .toEqual(['0:10', '1:25']);
   });
 
   it('returns an empty array and says so when nothing matches', () => {
     document.body.innerHTML = '<div></div>';
-    expect(mountIslands('.nope', 'card', () => ({}))).toEqual([]);
+    expect(mountIsland('.nope', 'card', () => ({}))).toEqual([]);
   });
 
   it('skips elements already mounted, so it is safe to re-run', () => {
     document.body.innerHTML = '<div class="card"><span>{{ n }}</span></div>'.repeat(2);
-    const first = mountIslands('.card', 'card', () => ({ n: ref(1) }));
-    const second = mountIslands('.card', 'card', () => ({ n: ref(9) }));
+    const first = mountIsland('.card', 'card', () => ({ n: ref(1) }));
+    const second = mountIsland('.card', 'card', () => ({ n: ref(9) }));
     expect(second).toEqual(first);
     expect([...document.querySelectorAll('.card span')].map((s) => s.textContent))
       .toEqual(['1', '1']);
   });
 });
 
-describe('mountIsland accepts an element', () => {
+describe('mountIsland target forms', () => {
   it('mounts when handed a node instead of a selector', () => {
     document.body.innerHTML = '<div class="card"><span>{{ n }}</span></div>';
     const el = document.querySelector('.card');
-    expect(mountIsland(el, 'byEl', () => ({ n: ref(4) }))).not.toBeNull();
+    expect(mountIsland(el, 'byEl', () => ({ n: ref(4) }))).toHaveLength(1);
     expect(document.querySelector('.card span').textContent).toBe('4');
   });
 });

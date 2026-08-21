@@ -32,15 +32,15 @@ function cleanDOMForVue(rootEl, label = rootEl.id || "island") {
   };
 }
 const mounted = /* @__PURE__ */ new WeakMap();
-function mountIsland(target, label, setup, index = 0) {
-  const root = typeof target === "string" ? document.querySelector(target) : target;
-  const selector = typeof target === "string" ? target : "<element>";
-  if (!root) {
-    console.log(`[webflow-vue:island] "${label}" skipped — ${selector} not on this page`);
-    return null;
-  }
+function resolveRoots(target) {
+  if (typeof target === "string") return [...document.querySelectorAll(target)];
+  if (!target) return [];
+  if (target.nodeType === 1) return [target];
+  return [...target];
+}
+function mountOne(root, label, setup, index) {
   if (mounted.has(root)) {
-    console.log(`[webflow-vue:island] "${label}" already mounted on ${selector} — skipped`);
+    console.log(`[webflow-vue:island] "${label}" already mounted — skipped`);
     return mounted.get(root);
   }
   const t0 = performance.now();
@@ -50,28 +50,33 @@ function mountIsland(target, label, setup, index = 0) {
   app.mount(root);
   sweep.restore();
   mounted.set(root, app);
-  console.log(
-    `[webflow-vue:island] "${label}" mounted on ${selector} in ${(performance.now() - t0).toFixed(1)}ms`
-  );
+  console.log(`[webflow-vue:island] "${label}" mounted in ${(performance.now() - t0).toFixed(1)}ms`);
   return app;
 }
-function unmountIsland(selector) {
-  const root = typeof selector === "string" ? document.querySelector(selector) : selector;
-  if (!root || !mounted.has(root)) return false;
-  mounted.get(root).unmount();
-  mounted.delete(root);
-  console.log(`[webflow-vue:island] unmounted ${typeof selector === "string" ? selector : "element"}`);
-  return true;
-}
-function mountIslands(selector, label, setup) {
-  const roots = [...document.querySelectorAll(selector)];
+function mountIsland(target, label, setup) {
+  const roots = resolveRoots(target);
+  const where = typeof target === "string" ? target : "<element>";
   if (!roots.length) {
-    console.log(`[webflow-vue:island] "${label}" skipped — nothing matches ${selector}`);
+    console.log(`[webflow-vue:island] "${label}" skipped — nothing matches ${where}`);
     return [];
   }
-  const apps = roots.map((root, i) => mountIsland(root, `${label}[${i}]`, setup, i)).filter(Boolean);
-  console.log(`[webflow-vue:island] "${label}" mounted on ${apps.length}/${roots.length} match(es) of ${selector}`);
+  const many = roots.length > 1;
+  const apps = roots.map((root, i) => mountOne(root, many ? `${label}[${i}]` : label, setup, i)).filter(Boolean);
+  if (many) {
+    console.log(`[webflow-vue:island] "${label}" mounted on ${apps.length}/${roots.length} match(es) of ${where}`);
+  }
   return apps;
+}
+function unmountIsland(target) {
+  let n = 0;
+  for (const root of resolveRoots(target)) {
+    if (!mounted.has(root)) continue;
+    mounted.get(root).unmount();
+    mounted.delete(root);
+    n += 1;
+  }
+  if (n) console.log(`[webflow-vue:island] unmounted ${n} island(s)`);
+  return n;
 }
 const STORAGE_PREFIX = "webflow-vue:store:";
 const registry = /* @__PURE__ */ new Map();
@@ -417,7 +422,7 @@ const extractors = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePr
   number,
   richText
 }, Symbol.toStringTag, { value: "Module" }));
-const version = "0.0.7";
+const version = "0.1.0";
 export {
   cleanDOMForVue,
   clearCollectionCache,
@@ -427,7 +432,6 @@ export {
   loadAllPages,
   loadDocument,
   mountIsland,
-  mountIslands,
   parseItemElement,
   resetSharedStore,
   unmountIsland,

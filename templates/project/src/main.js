@@ -10,7 +10,7 @@ import { mountIsland } from 'webflow-vue';
  *
  * The markup lives in Webflow. This island expects, somewhere on the page:
  *
- *   <div id="counter">                        <- any element with this id
+ *   <div id="counter">                        <- any element matching the selector
  *     <button v-on:click="cups++">+</button>  <- Custom Element (directives)
  *     <span>{{ cups }} cups = {{ grams }} g</span>
  *   </div>

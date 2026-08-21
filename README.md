@@ -4,7 +4,7 @@ Vue 3 islands on Webflow-rendered DOM. Webflow owns the markup and the styling;
 Vue owns the behaviour. No build step required, and no page-wide takeover — the
 rest of the page stays untouched Webflow, with its own runtime intact.
 
-> **Status: `0.0.6`, unstable.** The API still moves. Pin a tag; expect
+> **Status: `0.1.0`, unstable.** The API still moves. Pin a tag; expect
 > signatures to change before `0.1.0`.
 
 ## Quick start — two script tags
@@ -13,7 +13,7 @@ Paste into your Webflow page's **custom code (head)**:
 
 ```html
 <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/webflow-vue@0.0.6/dist/webflow-vue.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/webflow-vue@0.1.0/dist/webflow-vue.global.js"></script>
 ```
 
 Give any element an id — that is your island. Then add an **embed placed after
@@ -56,9 +56,8 @@ you — bridge install, DOM scaffold, matching Vue code, publish.
 ## API
 
 ```js
-mountIsland(target, label, setup)      // one element; target is a selector or an element
-mountIslands(selector, label, setup)   // every match, one app each
-unmountIsland(target)                  // tear down, so the element can mount again
+mountIsland(target, label, setup)      // mounts EVERY match; returns an array of apps
+unmountIsland(target)                  // tears them down; returns how many
 useSharedStore(name, initial, opts)    // named reactive singleton, optional persistence
 useWebflowCMS(options)                 // parse rendered Collection Lists into reactive data
 fetchCollection(url, options)          // fetch an item's template page, cached and deduped
@@ -68,19 +67,24 @@ cleanDOMForVue(root, label)            // detach/restore Webflow runtime nodes a
 ```
 
 `setup` is Vue's `setup()`. Whatever object it returns becomes the vocabulary
-your Designer markup can reference; anything not returned stays private. Under
-`mountIslands` it is called once per element and receives `(el, index)`.
+your Designer markup can reference; anything not returned stays private. It is
+called once per element and receives `(el, index)`.
 
-### One element or many
+### One element or many — same call
 
-`mountIsland` uses `querySelector`, so a class or attribute selector mounts the
-**first match only** and leaves the rest rendering raw `{{ }}`. When a component
-appears more than once, use `mountIslands` — and prefer an attribute over IDs,
-so adding another participant is a Designer action rather than a code change.
+An island is a component *definition*; it may appear in several places.
+`mountIsland` mounts every element that matches, so `#counter` matching once and
+`[data-brew]` matching three times are the same operation. Nothing can silently
+under-mount.
 
 ```js
-mountIslands('[data-brew]', 'brew', () => ({ cups, grams }))
+mountIsland('#counter', 'counter', setup)      // → [app]
+mountIsland('[data-brew]', 'brew', setup)      // → [app, app, app]
 ```
+
+Prefer an attribute over IDs when a component repeats: adding another mount
+point is then a Designer action with no code change. `target` also accepts an
+element or a list of elements.
 
 ### Where to declare things
 
@@ -99,11 +103,11 @@ The callback runs **once per island**, and that single fact decides everything:
 const cups = ref(1)                                  // shared by every island
 const grams = computed(() => cups.value * 18)        // evaluated once
 
-mountIslands('[data-brew]', 'brew', () => ({ cups, grams }))
+mountIsland('[data-brew]', 'brew', () => ({ cups, grams }))
 ```
 
 ```js
-mountIslands('[data-bean]', 'bean', (el) => {
+mountIsland('[data-bean]', 'bean', (el) => {
   const qty = ref(1)                                 // this card's own
   const price = Number(el.dataset.price) || 0        // this card's own
   return { qty, price, total: computed(() => qty.value * price) }
@@ -127,13 +131,13 @@ The container is replaced, so islands inside it are destroyed and the fresh
 markup is never mounted. Re-run the mounts after each navigation:
 
 ```js
-function mountIslandsOnPage() { /* all your mount calls */ }
+function mountAll() { /* all your mount calls */ }
 
-mountIslandsOnPage()
-if (window.barba) barba.hooks.afterEnter(mountIslandsOnPage)
+mountAll()
+if (window.barba) barba.hooks.afterEnter(mountAll)
 ```
 
-`mountIsland` returns the existing app for a root it has already mounted, so
+`mountIsland` returns the existing app for any root it has already mounted, so
 re-running is safe. State resets across a transition because the elements are
 new — use a persisted store for anything that must survive.
 
@@ -157,7 +161,7 @@ npm test           # vitest + jsdom
 
 - **Vue runtime** loaded from CDN (`vue.global.js`, ships the template compiler). In dev, Vite aliases `vue` → `vue/dist/vue.esm-bundler.js` (see `vite.config.js`) — islands compile the live Webflow DOM as their template, so the runtime compiler must always be present.
 - **App code** in `src/`, bundled with Vite as a UMD `main.js`. Vue is externalized to the CDN global in builds.
-- **Mount strategy**: `mountIsland(selector, label, setup)` (`src/mountIsland.js`) — NO template option; Vue uses the live Webflow-rendered DOM as its template. Islands skip themselves when their mount point isn't on the current page, so one bundle serves the whole site.
+- **Mount strategy**: `mountIsland(target, label, setup)` (`src/mountIsland.js`) — NO template option; Vue uses the live Webflow-rendered DOM as its template. Islands skip themselves when their mount point isn't on the current page, so one bundle serves the whole site.
 - **Bridge script** (`webflow-bridge.html`) goes in Webflow page custom code. Routes the bundle source by env: `?debug` → local Vite with HMR, `*.webflow.io` → staging asset, prod host → prod asset. **Apply at page level only** — site + page double-mounts Vue.
 
 ### Core modules

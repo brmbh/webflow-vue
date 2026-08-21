@@ -20,7 +20,7 @@ and none of the phases below apply. Hand them this and stop:
 
 ```html
 <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/webflow-vue@0.0.6/dist/webflow-vue.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/webflow-vue@0.1.0/dist/webflow-vue.global.js"></script>
 ```
 
 **Route 2 — a project.** Code that wants version control, a build step, real
@@ -360,19 +360,18 @@ published build. Do not re-derive them; do not guess at them.
 
 **One island per mount root, and a root is one element.** IDs are unique by
 definition, so an island cannot be "reused" on a second element. If the same
-thing appears in more than one place, that is `mountIslands`.
+thing appears in more than one place, that is the same `mountIsland` call with a
+selector that matches more than once.
 
-| need | use |
-|---|---|
-| one element | `mountIsland('#id', label, setup)` |
-| several elements, same component | `mountIslands('[data-x]', label, setup)` |
-| you hold the element already | `mountIsland(el, label, setup)` |
+**There is one mount function.** `mountIsland(target, label, setup)` mounts
+**every** match and returns an array, so `#id` matching once and `[data-x]`
+matching three times are the same operation — nothing can silently under-mount.
+`target` accepts a selector, an element, or a list of elements.
 
-**`mountIsland` is singular and silent about it.** It calls `querySelector`, so
-`mountIsland('.card', …)` mounts the first `.card` and leaves every other one
-rendering raw `{{ }}` — while still logging a success line. Whenever more than
-one element participates, prefer an attribute (`data-brew`) over IDs: adding a
-fourth participant then becomes a Designer action with no code change.
+Whenever more than one element participates, prefer an attribute (`data-brew`)
+over IDs: adding a fourth participant is then a Designer action with no code
+change. (Before 0.1.0 there was also a `mountIslands`; it is gone — a one-letter
+difference between two mount functions was a typo trap.)
 
 **The setup callback runs once per island.** This is the rule everything else
 follows from:
@@ -410,7 +409,7 @@ the user does not need. It earns its place in exactly three cases:
 replaced, so islands inside it are destroyed and the new markup is never
 mounted — the page shows raw `{{ }}` after any in-site navigation. Wrap the
 mounts in a function, call it once directly and again from the library's
-after-enter hook. `mountIsland` records its roots and returns the existing app
+after-enter hook. `mountIsland` records its roots and returns the existing apps
 rather than mounting twice, so re-running is safe; without that guard Vue mounts
 over itself and throws `Cannot read properties of null (reading 'nextSibling')`.
 Island state resets across a transition because the elements are genuinely new —

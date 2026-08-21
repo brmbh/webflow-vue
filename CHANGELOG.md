@@ -3,6 +3,21 @@
 All notable changes to `webflow-vue`. Versions are `0.0.x` and the API still
 moves; pin an exact version.
 
+## 0.1.0 — 2026-08-20
+
+### Changed — breaking
+- **`mountIslands` is gone; `mountIsland` now mounts every match** and returns an
+  array of apps. Two mount functions separated by one letter was a typo trap —
+  it caught the author of the docs within an hour of shipping — and the singular
+  form's `querySelector` behaviour had no legitimate use: it mounted the first
+  match, left the rest rendering raw `{{ }}`, and still logged success.
+  With an `#id` selector "every match" is "the one match", so the only code that
+  changes behaviour is code that was silently under-mounting.
+  An island is a component *definition* that may appear in several places.
+- `unmountIsland` unmounts every match and returns the count rather than a
+  boolean.
+- Both accept a selector, an element, or a list of elements.
+
 ## 0.0.7 — 2026-08-20
 
 ### Documentation
