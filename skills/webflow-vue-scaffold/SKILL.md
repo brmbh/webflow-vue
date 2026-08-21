@@ -395,6 +395,13 @@ is not using `?debug` gets an unmounted page.
    `npx webflow-vue init <dir>` and `npm install`. Pin the same library version
    the page currently loads — `detect` prints it — so the migration changes one
    thing at a time.
+
+   If `npm install` fails with `ETARGET … No matching version found for
+   webflow-vue@^X.Y.Z`, the CLI is running ahead of the registry — someone is
+   using a local build of an unpublished release. `init` pins the project and the
+   bridge to the CLI's own version *on purpose*, so the two always agree; do not
+   work around it by loosening the pin, because that desynchronises the bundle's
+   dependency from the CDN tag the bridge loads. Publish the release first.
 2. **Lift the code.** Move the page's island code into `src/main.js` verbatim,
    converting the two globals to imports: `const { ref } = Vue` →
    `import { ref } from 'vue'`, and `const { mountIsland } = WebflowVue` →
