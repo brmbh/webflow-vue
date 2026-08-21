@@ -328,41 +328,80 @@ A publish that `detect` cannot confirm is not a publish that worked.
 
 ## Graduating route 1 → route 2
 
-Route 1 stops paying when a second page needs the same behaviour, when the code
-outgrows what anyone wants to edit in a textarea, or when it needs to be in git.
-Moving is mechanical because the API does not change — only the delivery does.
+This is the main path, not an edge case. Route 1 is the on-ramp: two CDN tags and
+code typed straight into Webflow's custom code panel, no tooling, no build. When
+that is worth keeping, this is the lift — the page's inline code becomes a real
+project, and the user gets the live Webflow page running off their local Vite
+with `?debug`.
 
 **Migrate when** any of: the code is wanted in version control; two or more pages
 share behaviour; the island needs npm dependencies or a build step; more than one
 person edits it.
 
 **Do not migrate** for size alone. A single 40-line widget in page custom code is
-a feature of route 1, not a symptom.
+a feature of route 1, not a symptom. And it is the user's call either way — see
+§ Ask, do not assume.
 
-The order matters, because the live page must keep working throughout:
+### What `?debug` actually needs
 
-1. **Ask where the project goes** (see § Ask, do not assume) — a fresh directory
-   is the default and the only path this procedure covers. Then
+`?debug` is a **bridge feature**. Without the bridge installed on the page,
+nothing reads the parameter and nothing loads from `localhost:3000`. You cannot
+get HMR against the live page before the bridge exists, so do not promise it
+before step 4.
+
+The bridge's `debug` branch loads only Vite's client and `src/main.js`; it never
+dereferences `STAGING_BUNDLE` or `PROD_BUNDLE`. So **the placeholders do not block
+`?debug`** — a bridge installed with `SITE_ID` intact gives a working dev loop.
+They block everyone else: outside `?debug` that bridge loads no bundle at all.
+
+### The two implementations must never overlap
+
+The route-1 tags and the bridge cannot both be live. They load two separate copies
+of the library, each with its own mount registry, so the idempotence guard in
+`mountIsland` does not see across them — both try to mount the same roots. Remove
+the tags in the same sitting you install the bridge.
+
+That is why the bundle is built and uploaded **before** the tags come out: at the
+moment you remove them, the bridge must already have something to load, or every
+visitor who is not using `?debug` gets an unmounted page.
+
+### The order
+
+1. **Ask where the project goes** (§ Ask, do not assume) — a fresh directory is
+   the default and the only path this procedure covers. Then
    `npx webflow-vue init <dir>` and `npm install`. Pin the same library version
    the page currently loads — `detect` prints it — so the migration changes one
    thing at a time.
-2. Move the page's island code into `src/main.js` verbatim, converting the two
-   globals to imports: `const { ref } = Vue` → `import { ref } from 'vue'`, and
-   `const { mountIsland } = WebflowVue` → `import { mountIsland } from 'webflow-vue'`.
-   Nothing else changes. The markup does not change at all.
-3. `npm run dev`, open the live page with `?debug`. The bridge is not installed
-   yet, so the page is still running its route-1 code — that is intentional. Fix
-   the bundle until it is right.
-4. Install the bridge (Phase 3), with the placeholders filled.
-5. **Now remove the route-1 script tags from the page's freeform footer block** —
-   read the block, delete only those tags, write the remainder back. Leaving them
-   is the `mixed` verdict: two copies of Vue, two reactivity contexts, and state
-   that mysteriously does not sync.
-6. Publish, then `npx webflow-vue detect <url>`. Expect route **2** and no
-   warnings. If it still says `mixed`, step 5 did not take.
+2. **Lift the code.** Move the page's island code into `src/main.js` verbatim,
+   converting the two globals to imports: `const { ref } = Vue` →
+   `import { ref } from 'vue'`, and `const { mountIsland } = WebflowVue` →
+   `import { mountIsland } from 'webflow-vue'`. Nothing else changes, and the
+   Webflow markup does not change at all. Iterate locally — the live page is
+   still serving its route-1 code and cannot see this project yet.
+3. **Build and upload the bundle.** `npm run build` produces `dist/main.js`.
+   Webflow assets reject `.js`, so upload it renamed to `bundle.txt` via
+   `data_assets_tool`, and read back the asset ID. Do this for the staging asset
+   at minimum; a prod domain needs its own.
+4. **Install the bridge** (Phase 3) with `SITE_ID` and the asset IDs **filled in**.
+   Page level only.
+5. **Remove the route-1 script tags** from the page's freeform footer block —
+   `get_page_freeform_code`, delete only those tags, write the remainder back
+   with `set_page_freeform_code`. That block holds other things; a blind write
+   destroys them.
+6. **Publish, then `npx webflow-vue detect <url>`.** Expect route **2** and no
+   warnings. `mixed` means step 5 did not take. `bridge-placeholders` means step 4
+   went in unfilled, and the page is now blank for real visitors.
+7. **Now the dev loop.** `npm run dev`, open the live page with `?debug`, and the
+   page runs off local Vite with HMR. This is the payoff moment and the first
+   point at which it is available.
 
-Steps 4 and 5 are the only window where the page can be broken, so do them in one
-sitting and verify immediately.
+Steps 4–6 are the only window where the page can be inconsistent, so do them in
+one sitting and verify immediately.
+
+**On a page with real traffic**, offer to do the whole thing on a duplicate page
+first (`data_pages_tool > create_page` with `duplicateOf`), verify route 2 there,
+and only then repeat steps 4–6 on the original. Costs one publish; removes the
+window entirely.
 
 ## Examples
 
