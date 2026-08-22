@@ -1,6 +1,6 @@
 {
   "name": "webflow-vue",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "type": "module",
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.3",
@@ -42,6 +42,7 @@
     "bin",
     "dist/webflow-vue.global.js",
     "dist/webflow-vue.esm.js",
+    "dist/bridge.global.js",
     "src/cli",
     "templates",
     "skills",
@@ -61,7 +62,9 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "build:lib": "vite build --mode lib",
-    "verify:live": "node scripts/verify-live.mjs"
+    "verify:live": "node scripts/verify-live.mjs",
+    "build:bridge": "vite build --mode bridge",
+    "build:dist": "npm run build:lib && npm run build:bridge"
   },
   "bin": {
     "webflow-vue": "bin/webflow-vue.js"

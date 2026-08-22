@@ -3,6 +3,49 @@
 All notable changes to `webflow-vue`. Versions are `0.0.x` and the API still
 moves; pin an exact version.
 
+## 0.3.0 — 2026-08-22
+
+### Added
+- **The bridge ships in the package**: `dist/bridge.global.js`, 2.3 kB (1.1 kB
+  gzipped). Route 2 is now one script tag in a page's footer custom code:
+
+  ```html
+  <script src="https://cdn.jsdelivr.net/npm/webflow-vue@0.3.0/dist/bridge.global.js"
+          data-bundle="https://cdn.prod.website-files.com/<site>/<asset>_main.txt"></script>
+  ```
+
+  **One version pin instead of two.** The bridge derives the library URL from its
+  own `src`, so it always loads the `webflow-vue` build that shipped beside it.
+  Previously a pasted bridge carried `WEBFLOW_VUE_VERSION` while the project's
+  `package.json` carried its own, with nothing keeping them in step.
+
+  **Bridge bugs become shippable.** Both bridge defects found in 0.2.x — a bundle
+  filename that contradicted its own comment, and a load order that left a dark
+  window for visitors — were frozen into every page that had already pasted it.
+  A pasted snippet cannot receive fixes; a versioned artifact can.
+
+  **A missing bundle is now loud.** The pasted bridge shipped `SITE_ID` /
+  `STAGING_ASSET_ID` placeholders, and leaving them in fetched a 404 silently,
+  and only outside `?debug`. There is nothing left to forget: omit `data-bundle`
+  and the page logs `no bundle to load: set data-bundle=…`.
+
+  Configurable via `data-staging-bundle` (a separate bundle for `*.webflow.io`),
+  `data-dev`, `data-vite-client`, `data-vue`, `data-library`, `data-debug-param`.
+
+- `npm run build:bridge`, and `build:dist` for both artifacts.
+
+### Changed
+- `webflow-vue init` scaffolds the one-tag bridge instead of a 40-line loader.
+  The decision logic left the template and became tested code — 17 tests covering
+  the version derivation, load order, staging/production selection, the debug
+  branch, and the missing-bundle error.
+
+### Migration
+Existing pages keep working; a pasted bridge is still a working bridge. To move,
+replace the whole block with the tag above and carry the URL from `STAGING_BUNDLE`
+into `data-bundle`. Do it in a single publish: two bridges live at once load two
+copies of the library, which throws and destroys the islands.
+
 ## 0.2.3 — 2026-08-22
 
 Everything here came out of driving the route-2 dev loop against a live page for

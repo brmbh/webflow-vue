@@ -4,8 +4,8 @@ Vue 3 islands on Webflow-rendered DOM. Webflow owns the markup and the styling;
 Vue owns the behaviour. No build step required, and no page-wide takeover — the
 rest of the page stays untouched Webflow, with its own runtime intact.
 
-> **Status: `0.1.0`, unstable.** The API still moves. Pin a tag; expect
-> signatures to change before `0.1.0`.
+> **Status: `0.3.0`, unstable.** The API still moves. Pin an exact version;
+> expect signatures to change before `1.0.0`.
 
 ## Quick start — two script tags
 
@@ -13,7 +13,7 @@ Paste into your Webflow page's **custom code (head)**:
 
 ```html
 <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/webflow-vue@0.1.0/dist/webflow-vue.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/webflow-vue@0.3.0/dist/webflow-vue.global.js"></script>
 ```
 
 Give any element an id — that is your island. Then add an **embed placed after
@@ -44,6 +44,35 @@ mounts nothing):
 `vue.global.js` is required rather than the runtime-only build: an island's
 template *is* the live Webflow DOM, so the template compiler has to be present.
 
+## The bridge (route 2)
+
+Building a project rather than pasting islands into a page? One tag in the page's
+footer custom code loads everything:
+
+```html
+<script
+  src="https://cdn.jsdelivr.net/npm/webflow-vue@0.3.0/dist/bridge.global.js"
+  data-bundle="https://cdn.prod.website-files.com/<site-id>/<asset-id>_main.txt"
+></script>
+```
+
+It picks, in the browser, where your island code comes from:
+
+| URL | loads |
+| --- | --- |
+| normal | Vue → webflow-vue → your built bundle, in that order |
+| `?debug` | your local Vite dev server, with HMR, and no CDN copies |
+
+The version in that `src` is the **only** version pin: the bridge loads the
+`webflow-vue` build that shipped beside it, derived from its own URL, so the page
+and the bundle cannot drift apart.
+
+Optional: `data-staging-bundle` (a different bundle for `*.webflow.io`),
+`data-dev`, `data-vite-client`, `data-vue`, `data-library`, `data-debug-param`.
+
+Omit `data-bundle` and the page tells you so in the console rather than fetching
+a 404 in silence.
+
 ## CLI
 
 ```bash
@@ -62,7 +91,7 @@ $ npx webflow-vue detect https://my-site.webflow.io/brew
   route 1 — CDN tags in the page's own custom code. No project needed.
 
     vue          3 — https://unpkg.com/vue@3/dist/vue.global.js
-    webflow-vue  0.1.0 — https://cdn.jsdelivr.net/npm/webflow-vue@0.1.0
+    webflow-vue  0.3.0 — https://cdn.jsdelivr.net/npm/webflow-vue@0.3.0
     mounts       brew → [data-brew]
     markup       3 mustache(s), 1 directive(s)
 

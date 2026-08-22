@@ -42,8 +42,27 @@ describe('webflow-vue init', () => {
 
   it('points the bridge at the matching CDN tag', () => {
     init(dir, { version: '1.2.3' });
-    expect(read('webflow-vue-bridge.html')).toContain("var WEBFLOW_VUE_VERSION = '1.2.3'");
-    expect(read('webflow-vue-bridge.html')).toContain('cdn.jsdelivr.net/npm/webflow-vue@');
+    const bridge = read('webflow-vue-bridge.html');
+    expect(bridge).toContain('cdn.jsdelivr.net/npm/webflow-vue@1.2.3/dist/bridge.global.js');
+  });
+
+  it('scaffolds the bridge as one script tag, not a loader to maintain', () => {
+    init(dir, { version: '1.2.3' });
+    const bridge = read('webflow-vue-bridge.html');
+    // The loader now lives in the package, so a scaffolded project carries a tag
+    // and no logic. Bridge bugs used to freeze into every page that pasted them.
+    expect(bridge).not.toContain('function addScript');
+    expect(bridge).not.toContain('WEBFLOW_VUE_VERSION');
+    expect(bridge.match(/<script/g)).toHaveLength(1);
+  });
+
+  it('ships no asset-ID placeholders — a missing bundle is now a loud error', () => {
+    init(dir, { version: '1.2.3' });
+    const bridge = read('webflow-vue-bridge.html');
+    for (const ghost of ['SITE_ID', 'STAGING_ASSET_ID', 'PROD_ASSET_ID']) {
+      expect(bridge, `bridge still carries ${ghost}`).not.toContain(ghost);
+    }
+    expect(bridge).toContain('data-bundle');
   });
 
   it('leaves no unsubstituted placeholders anywhere', () => {

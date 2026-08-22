@@ -277,41 +277,53 @@ Require explicit confirmation before any mutation:
 
 ### Phase 3 — Bridge Install (skip if already present)
 
-**Default: put the bridge in the page's own custom code.** Not as an
-App-registered script. See § App-registered scripts for why — in short, Webflow
-deletes App-added code on the next publish after that App's access is revoked, so
-an API-installed bridge makes the production page depend on an OAuth grant, and
-it does not appear in either custom-code box where a person would look for it.
+**The bridge ships in the package.** One script tag in the page's **footer**
+custom code, page level, exactly one per page:
 
-The bridge is ~40 lines. Paste it, and it belongs to the site.
+```html
+<script
+  src="https://cdn.jsdelivr.net/npm/webflow-vue@0.3.0/dist/bridge.global.js"
+  data-bundle="https://cdn.prod.website-files.com/<site-id>/<asset-id>_main.txt"
+></script>
+```
 
-1. Read the existing block first — `get_page_freeform_code(page_id)`.
-   `set_page_freeform_code` replaces it wholesale.
-2. Write the **footer** block: the bridge inside `<script>` tags, with
-   `SITE_ID` and the asset IDs replaced, plus a comment saying what it does and
-   that exactly one bridge may exist on the page.
+That tag's version is the only version pin. The bridge loads the `webflow-vue`
+build that shipped beside it, derived from its own `src` — so the page and the
+bundle can never disagree about which library they are on.
+
+**Put it in page custom code, not an App-registered script.** Webflow deletes
+App-added code on the next publish after that App's access is revoked, which
+makes a page's production path depend on an OAuth grant, and it appears in
+neither custom-code box so nobody can find it. See § App-registered scripts.
+
+1. `get_page_freeform_code(page_id)` first — `set_page_freeform_code` replaces
+   the block wholesale.
+2. Write the **footer** block: the tag plus a short comment. Keep whatever else
+   was in there.
 3. Publish, then verify with `detect` **and** a real browser.
 
-Page level only, and exactly one. Two bridges load two copies of the library,
-which throws and destroys the islands — see the measured rule above.
+**`data-bundle` is required** and there is no placeholder to forget: omit it and
+the page logs `no bundle to load: set data-bundle=…` instead of fetching a 404
+in silence, which is how the old pasted bridge failed.
 
-**The API route, when the user asks for it.** It is the better choice for
-agent-driven iteration, since an agent can install and re-version it without the
-user touching the Designer. Say what it costs before using it, then:
+Optional attributes: `data-staging-bundle` (a different bundle for `*.webflow.io`),
+`data-dev`, `data-vite-client`, `data-vue`, `data-library`, `data-debug-param`.
 
-1. `register_inline_script` — `display_name` alphanumeric only (e.g.
-   `Webflow VueBridge`), `version`, `source_code` = the bridge with `<script>`
-   tags and comments stripped and the placeholders filled. **Placeholders left in
-   mean the page loads no bundle outside `?debug`;** `detect` reports this as
-   `bridge-placeholders`.
-2. `add_page_script` — footer, page level. If it 404s with "Custom code block not
-   found", the page has no block yet: use `set_page_scripts` to create it.
-3. `get_page_scripts(page_id)` to verify.
+**Older projects carry a pasted 40-line bridge.** It still works. Replacing it is
+one edit — swap the whole block for the tag above, carrying the bundle URL from
+`STAGING_BUNDLE` into `data-bundle` — and it is worth doing, because a pasted
+bridge cannot receive fixes.
 
-**Swapping between the two is atomic if you let it be.** Freeform edits and page
-scripts both only take effect at publish, so write the new one and remove the old
-one *before* publishing once. Done that way there is never a moment with two
-bridges live.
+**The API route, when the user asks for it.** Better for agent-driven iteration,
+since an agent can install and re-version it without the user touching the
+Designer. State the revocation cost first, then `register_inline_script` →
+`add_page_script` (or `set_page_scripts` if it 404s with "Custom code block not
+found") → `get_page_scripts` to verify.
+
+**Swapping bridges is atomic if you let it be.** Freeform edits and page scripts
+both only take effect at publish, so write the new one and remove the old one
+*before* publishing once. Two bridges live at the same time load two copies of
+the library, which throws and destroys the islands.
 
 ### Phase 4 — Code + DOM Change (parallel)
 
@@ -438,8 +450,8 @@ is not using `?debug` gets an unmounted page.
    bytes to S3 as multipart form-data with every `uploadDetails` property as a
    field and the file last, expecting **201**. Then confirm `hostedUrl` returns
    200 and its checksum matches the local build before going further.
-4. **Install the bridge** (Phase 3) with `SITE_ID` and the asset IDs **filled in**.
-   Page level only.
+4. **Install the bridge** (Phase 3): one script tag in the page's footer custom
+   code with `data-bundle` set to the asset URL from step 3. Page level only.
 5. **Remove the route-1 script tags** from the page's freeform footer block —
    `get_page_freeform_code`, delete only those tags, write the remainder back
    with `set_page_freeform_code`. That block holds other things; a blind write

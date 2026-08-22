@@ -1,58 +1,46 @@
 <!--
-  WebflowVue bridge v0.3.0 — install as PAGE-LEVEL custom code.
+  The webflow-vue bridge.
 
-  Site-level + page-level together mounts Vue twice. Page level only.
+  Paste this into your Webflow page's custom code, in the FOOTER block, and
+  publish. Page level only, and exactly one per page.
 
-  Routes the app bundle by environment:
-    ?debug        -> local Vite dev server, with HMR live on the Webflow page
-    *.webflow.io  -> staging bundle
-    prod host     -> prod bundle
+  WHY THE FOOTER: a code embed's scripts run at parse time, so the bridge has to
+  come after the islands it mounts.
 
-  In debug, Vite serves Vue and WebflowVue out of node_modules, so injecting the
-  CDN copies as well would load two Vue instances whose reactivity does not
-  interoperate. Outside debug there is no bundler, so both come from the CDN
-  and the app bundle carries only your own code.
+  WHY THE PAGE and not a site-level App integration: Webflow deletes code added
+  by an App on the next publish after that App's access is revoked. Code in this
+  box belongs to your site and cannot vanish that way.
 
-  Webflow MCP constraint: registered inline scripts must be raw JS — no <script>
-  tags, no external src attributes. Hence addScript() instead of markup.
+  WHAT IT DOES: it chooses, in the browser, where your island code comes from.
+  Webflow serves the same HTML either way and knows nothing about ?debug.
 
-  BEFORE THIS WORKS, REPLACE:
-    SITE_ID, STAGING_ASSET_ID, PROD_ASSET_ID
-  Webflow assets reject .js, so upload dist/main.js renamed to main.txt — the
-  name matters: an asset's URL is <site-id>/<asset-id>_<filename>, and the URLs
-  below end in _main.txt. Uploading it as bundle.txt yields _bundle.txt and the
-  bridge 404s, silently, and only outside ?debug. The CDN serves .txt without
-  nosniff, so a classic script tag executes it. (Verified 2026-08-21.)
+      normal URL  ->  Vue + webflow-vue from the CDN, then your built bundle
+      ?debug      ->  https://localhost:3000 (your Vite dev server, with HMR)
+
+  The library version is the version in the src below — the bridge loads the
+  webflow-vue build that shipped alongside it, so there is only ever one version
+  to keep track of.
+
+  BEFORE IT WORKS: add data-bundle, pointing at your built bundle.
+    1. npm run build            -> dist/main.js
+    2. rename it to main.txt    (Webflow assets reject .js; the name matters,
+                                 an asset URL is <site-id>/<asset-id>_<filename>)
+    3. upload it to your site's Assets, copy the URL
+    4. paste that URL into data-bundle below
+
+  Until then the page logs exactly what is missing instead of failing silently.
+
+  OPTIONAL ATTRIBUTES
+    data-staging-bundle  a separate bundle for *.webflow.io, if staging and
+                         production should differ
+    data-dev             dev entry             (default https://localhost:3000/src/main.js)
+    data-vite-client     Vite HMR client       (default https://localhost:3000/@vite/client)
+    data-vue             Vue build             (default the CDN production build)
+    data-library         webflow-vue build     (default: derived from this tag's src)
+    data-debug-param     query param to switch to the dev server (default "debug")
 -->
-<script>
-  function addScript(src, isModule, onload) {
-    const s = document.createElement('script');
-    s.setAttribute('type', isModule ? 'module' : 'text/javascript');
-    s.setAttribute('src', src);
-    if (onload) s.onload = onload;
-    document.body.appendChild(s);
-  }
 
-  var WEBFLOW_VUE_VERSION = '__WEBFLOW_VUE_VERSION_EXACT__';
-  var url = new URL(window.location);
-  var debug = url.searchParams.get('debug') !== null;
-
-  var STAGING_BUNDLE = 'https://cdn.prod.website-files.com/SITE_ID/STAGING_ASSET_ID_main.txt';
-  var PROD_BUNDLE = 'https://cdn.prod.website-files.com/SITE_ID/PROD_ASSET_ID_main.txt';
-
-  if (debug) {
-    // Vite owns the dependency graph here — do not inject CDN copies.
-    addScript('https://localhost:3000/@vite/client', true);
-    addScript('https://localhost:3000/src/main.js', true);
-  } else {
-    var VUE_CDN = 'https://unpkg.com/vue@3/dist/vue.global.prod.js';
-    var WEBFLOW_VUE_CDN =
-      'https://cdn.jsdelivr.net/npm/webflow-vue@' + WEBFLOW_VUE_VERSION + '/dist/webflow-vue.global.js';
-
-    addScript(VUE_CDN, false, function () {
-      addScript(WEBFLOW_VUE_CDN, false, function () {
-        addScript(url.host.match(/webflow\.io/) ? STAGING_BUNDLE : PROD_BUNDLE, false);
-      });
-    });
-  }
-</script>
+<script
+  src="https://cdn.jsdelivr.net/npm/webflow-vue@__WEBFLOW_VUE_VERSION_EXACT__/dist/bridge.global.js"
+  data-bundle=""
+></script>
