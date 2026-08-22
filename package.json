@@ -1,6 +1,6 @@
 {
   "name": "webflow-vue",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "type": "module",
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.3",

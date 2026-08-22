@@ -277,22 +277,41 @@ Require explicit confirmation before any mutation:
 
 ### Phase 3 — Bridge Install (skip if already present)
 
-Skip if `get_page_scripts(page_id)` already lists the bridge.
+**Default: put the bridge in the page's own custom code.** Not as an
+App-registered script. See § App-registered scripts for why — in short, Webflow
+deletes App-added code on the next publish after that App's access is revoked, so
+an API-installed bridge makes the production page depend on an OAuth grant, and
+it does not appear in either custom-code box where a person would look for it.
 
-1. `data_scripts_tool > register_inline_script` — register at site level
-   - `display_name`: alphanumeric only, e.g. `Webflow VueBridge`
-   - `version`: `0.1.0` (increment on conflict)
-   - `source_code`: contents of the project's `webflow-vue-bridge.html` with
-     `<script>` and `<!-- -->` stripped.
-     **Replace `SITE_ID`, `STAGING_ASSET_ID` and `PROD_ASSET_ID` first** — the
-     scaffolded bridge ships them as placeholders, and a bridge published with
-     them intact loads nothing outside `?debug`. `detect` reports this as
-     `bridge-placeholders`; it is the most common route-2 failure.
-2. `data_scripts_tool > add_page_script` — apply the registered ID to the target
-   page, `location: "footer"`, `version` matching what you registered
-3. `data_scripts_tool > get_page_scripts(page_id)` — verify
+The bridge is ~40 lines. Paste it, and it belongs to the site.
 
-Page level only. Site-level and page-level together mounts Vue twice.
+1. Read the existing block first — `get_page_freeform_code(page_id)`.
+   `set_page_freeform_code` replaces it wholesale.
+2. Write the **footer** block: the bridge inside `<script>` tags, with
+   `SITE_ID` and the asset IDs replaced, plus a comment saying what it does and
+   that exactly one bridge may exist on the page.
+3. Publish, then verify with `detect` **and** a real browser.
+
+Page level only, and exactly one. Two bridges load two copies of the library,
+which throws and destroys the islands — see the measured rule above.
+
+**The API route, when the user asks for it.** It is the better choice for
+agent-driven iteration, since an agent can install and re-version it without the
+user touching the Designer. Say what it costs before using it, then:
+
+1. `register_inline_script` — `display_name` alphanumeric only (e.g.
+   `Webflow VueBridge`), `version`, `source_code` = the bridge with `<script>`
+   tags and comments stripped and the placeholders filled. **Placeholders left in
+   mean the page loads no bundle outside `?debug`;** `detect` reports this as
+   `bridge-placeholders`.
+2. `add_page_script` — footer, page level. If it 404s with "Custom code block not
+   found", the page has no block yet: use `set_page_scripts` to create it.
+3. `get_page_scripts(page_id)` to verify.
+
+**Swapping between the two is atomic if you let it be.** Freeform edits and page
+scripts both only take effect at publish, so write the new one and remove the old
+one *before* publishing once. Done that way there is never a moment with two
+bridges live.
 
 ### Phase 4 — Code + DOM Change (parallel)
 
@@ -756,8 +775,51 @@ treated as a Vue directive. Other Webflow libraries use that prefix — socks-ui
 accordion ships `v-expand` — and Vue fails with "Failed to resolve directive"
 and renders nothing. Check the subtree for `v-` attributes that are not yours.
 
+### App-registered scripts — what installing a bridge through the API means
+
+Researched against Webflow's own docs, 2026-08-22. This is a distinct mechanism
+from the custom-code boxes, and it has an ownership consequence the user must
+agree to before you use it.
+
+**Two phases.** `register_inline_script` creates an *immutable* record at site
+level; `add_page_script` / `set_page_scripts` applies it to a location.
+Registering alone puts nothing on any page.
+
+**Immutable.** Each `display_name` + `version` pair is unique and cannot be
+overwritten — hence `update_registered_script` 404ing. Ship changes by
+registering a new version and re-applying.
+
+**"Inline" does not mean inline.** Webflow uploads the source to its CDN and
+publishes a plain `<script src>`; even inline scripts carry a `hostedLocation`.
+Anything reading the published HTML for the bridge's *source* will not find it —
+this is what made `detect` report a working route-2 page as route 0 before 0.2.2.
+
+**The script is owned by the App, not the site.** Webflow's docs: *"any custom
+code added by that App is removed when you next publish your site"* after its
+access is revoked. So a bridge installed this way makes the page's **production**
+code path depend on an OAuth grant staying alive. Revoke the app — or let it
+lapse — and the next publish silently drops the bridge, leaving visitors raw
+`{{ }}` with nothing in the Designer to explain it.
+
+**Therefore: ask before installing the bridge this way.** Offer both, and say
+what each costs:
+
+| | API-registered | pasted into page custom code |
+|---|---|---|
+| installable by an agent | yes | no — the user pastes it |
+| visible where users look | poorly — see below | yes |
+| survives revoking the app | **no** | yes |
+| good for | agent-driven iteration | a page in production |
+
+**Where the user can find it.** Docs say Page settings → Custom Code section.
+Users have reported not finding it there; the reliable place is **Site settings →
+Integrations → Authorized apps**, which lists the App that owns it. The hosted
+URL encodes the App ID as its middle path segment.
+
 ### Bridge install constraints
-- 2000-char limit on inline `source_code`
+- The MCP tool caps inline `source_code` at 2000 characters. Webflow's own API
+  allows 10,000 — if a bridge is too big for the tool, that is a tool limit, not
+  a platform one.
 - No `<script>` tags or external `<script src=...>` allowed inside `source_code` — Webflow wraps it in a `<script>` itself
 - `display_name` must be alphanumeric only (1–50 chars). No hyphens, dots, underscores.
 - Page-level scripts must reference site-registered scripts by ID; always register first
@@ -851,6 +913,21 @@ the Designer shows.
 - Designer tool returns "no element selected" or empty tree → Designer not open on the target page; ask user to switch
 - Vite dev server not running → tell user to `npm install && npm run dev`
 - mkcert cert not trusted by browser → WebSocket fails silently, HMR doesn't fire. Re-run `npm run dev` and accept the cert prompt.
+- **`?debug` fails with "Permission was denied for this request to access the
+  `loopback` address space"** while the dev server, its certificate, its CORS
+  headers and its module graph all check out — because the request never reached
+  it. A published page is a *public* origin and the dev server is a *local* one,
+  which Chrome gates behind the `local-network-access` permission. Two halves,
+  both needed: the scaffolded `vite.config.js` sends
+  `Access-Control-Allow-Private-Network: true` on the preflight, and the user
+  must allow the permission. **Once a profile has stored a denial Chrome never
+  re-prompts**, so the page keeps failing identically however the server is
+  fixed — reset it at
+  `chrome://settings/content/all?searchSubpage=<site>.webflow.io` → the site →
+  Local network access → Allow. Verified on Chrome 151, 2026-08-22.
+- Do not debug this by inspecting the dev server. Every server-side check passes
+  while the page is broken. Read the **browser console** first — it names the
+  cause in one line, and nothing else does.
 
 ### Companion skills
 

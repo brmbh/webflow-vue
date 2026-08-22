@@ -3,6 +3,66 @@
 All notable changes to `webflow-vue`. Versions are `0.0.x` and the API still
 moves; pin an exact version.
 
+## 0.2.3 — 2026-08-22
+
+Everything here came out of driving the route-2 dev loop against a live page for
+the first time. None of it was reachable from the unit suite or from inspecting
+the dev server.
+
+### Fixed
+- **`?debug` was unreachable from a published page.** Chrome gates a *public*
+  origin loading a subresource from a *local* one behind the
+  `local-network-access` permission. The scaffolded `vite.config.js` now sends
+  `Access-Control-Allow-Private-Network: true` on the preflight.
+
+  Measured honestly: with the permission granted the header changes nothing —
+  `?debug` mounted identically with and without it, including in a fresh browser
+  context. **The permission is the gate.** The first-visit path could not be
+  tested, because a DevTools-driven Chrome auto-grants the permission everywhere.
+  The header is the protocol's server-side half so it ships, but the thing that
+  actually unblocks a user is resetting the permission, and the docs say so.
+
+  The failure signature is the worst part: port, certificate, CORS headers and
+  module graph all pass while the page stays broken, because the request never
+  reaches the server. The skill now says to read the browser console first and
+  not to debug this by inspecting Vite.
+
+### Changed
+- **The bridge belongs in the page's own custom code, not in an App-registered
+  script.** Webflow's docs: *"any custom code added by that App is removed when
+  you next publish your site"* once its access is revoked — so an API-installed
+  bridge makes a page's **production** code path depend on an OAuth grant staying
+  alive, and it appears in neither custom-code box, so nobody can find it. Phase 3
+  now defaults to pasting, with the API route as a documented opt-in for
+  agent-driven iteration and its cost stated up front.
+- Swapping between the two is atomic if both edits are staged before a single
+  publish; the skill says so, because doing it in two publishes puts two bridges
+  live, which throws and destroys the islands.
+
+### Internal
+- **`verify:live` could not verify a route-2 page** — it followed the page's own
+  script tags, which route 2 does not have, and crashed on `window.Vue` being
+  undefined the moment the reference page graduated. It now finds the bridge
+  (inline or Webflow-hosted), runs it, and follows the scripts it injects in the
+  bridge's own order, exactly as a browser does.
+- **`--local` silently verified nothing on route 2.** The substitution of the
+  about-to-ship build lived only in the route-1 path, so the release gate was
+  loading the *published* library while claiming to test the local one. It now
+  substitutes inside the bridge chain too.
+- The pre-mount snapshot moved above everything that mounts, and falls back to a
+  mustache scan when no selectors are visible in the page — which is always the
+  case on route 2, where the mount calls live in the bundle.
+
+### Documentation
+- **App-registered scripts**, researched against Webflow's docs: register vs
+  apply, `display_name`+`version` immutability (which is why
+  `update_registered_script` 404s), and the fact that *"even inline scripts have
+  `hostedLocation` URLs"* — Webflow uploads them and serves a `<script src>`,
+  which is why `detect` could not see one before 0.2.2. Includes where a user can
+  actually find them: Site settings → Integrations → Authorized apps.
+- The 2000-character inline limit is the **MCP tool's**, not Webflow's, which
+  allows 10,000. The skill had recorded the tool limit as a platform limit.
+
 ## 0.2.2 — 2026-08-21
 
 Found by running the first real route-1 → route-2 graduation end to end, against

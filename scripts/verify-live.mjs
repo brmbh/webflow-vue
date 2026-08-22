@@ -23,7 +23,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { JSDOM } from 'jsdom';
-import { detectRoute } from '../src/cli/detect.js';
+import { detectRoute, registeredScriptUrls } from '../src/cli/detect.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const LOCAL_BUILD = path.resolve(HERE, '../dist/webflow-vue.global.js');
@@ -64,7 +64,7 @@ if (report.route === 0) {
 // --- 2. the bytes the page itself asks for ------------------------------
 const scriptTags = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
 const externals = [];
-for (const [, attrs, body] of scriptTags) {
+for (const [, attrs] of scriptTags) {
   const src = attrs.match(/\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
   if (!src) continue;
   const href = (src[1] ?? src[2]).trim();
@@ -75,11 +75,37 @@ const inlineIslandCode = scriptTags
   .filter(([, attrs, body]) => !/\bsrc\s*=/i.test(attrs) && /mountIsland\s*\(/.test(body))
   .map(([, , body]) => body);
 
-check(externals.length >= 2, 'page loads both Vue and webflow-vue', externals.join('  ·  '));
-check(inlineIslandCode.length > 0, 'page carries inline island code');
+/**
+ * On route 2 the page carries none of that. It carries a bridge, which decides
+ * at runtime what to load and injects it — so the only way to verify a route-2
+ * page is to run the bridge and follow the scripts it appends, exactly as a
+ * browser does. Before this, the gate crashed on `window.Vue` being undefined
+ * the moment the reference page graduated to route 2.
+ */
+async function findBridgeSource() {
+  const inline = scriptTags.find(
+    ([, attrs, body]) => !/\bsrc\s*=/i.test(attrs) && /WEBFLOW_VUE_VERSION/.test(body) && /addScript/.test(body)
+  );
+  if (inline) return { source: inline[2], from: 'page custom code' };
+  for (const u of registeredScriptUrls(html)) {
+    const body = await get(u);
+    if (/WEBFLOW_VUE_VERSION/.test(body) && /addScript/.test(body)) return { source: body, from: u };
+  }
+  return null;
+}
+
+const isRoute2 = report.route === 2 || report.route === 'mixed';
+let bridge = null;
+if (isRoute2) {
+  bridge = await findBridgeSource();
+  check(!!bridge, 'bridge source located', bridge ? `from ${bridge.from}` : 'route 2 reported but no bridge source found');
+} else {
+  check(externals.length >= 2, 'page loads both Vue and webflow-vue', externals.join('  ·  '));
+  check(inlineIslandCode.length > 0, 'page carries inline island code');
+}
 
 const sources = [];
-for (const href of externals) {
+for (const href of isRoute2 ? [] : externals) {
   if (useLocal && /webflow-vue/.test(href)) {
     const code = fs.readFileSync(LOCAL_BUILD, 'utf8');
     sources.push({ href: LOCAL_BUILD, code });
@@ -107,21 +133,6 @@ window.console.log = (...args) => {
   if (!quiet) console.log(`          ${line}`);
 };
 
-for (const { href, code } of sources) {
-  try {
-    window.eval(code);
-  } catch (err) {
-    check(false, `evaluating ${href}`, err.message);
-  }
-}
-check(typeof window.Vue === 'object', 'Vue global is defined');
-check(typeof window.WebflowVue === 'object', 'WebflowVue global is defined');
-check(
-  typeof window.WebflowVue?.mountIsland === 'function',
-  'WebflowVue.mountIsland exists',
-  `exports: ${Object.keys(window.WebflowVue ?? {}).join(', ')}`
-);
-
 // Snapshot the pre-mount DOM. Vue strips directive attributes and replaces the
 // subtree when it compiles, so anything we want to interact with afterwards has
 // to be identified now — and an "element rendered blank" verdict is only
@@ -129,9 +140,21 @@ check(
 const blanks = (el) =>
   [...el.querySelectorAll('*')].filter((n) => n.children.length === 0 && !n.textContent.trim()).length;
 
-const preMount = report.mounts.flatMap((mount) => {
+// Route 1 names its selectors in the page. Route 2 hides them in the bundle, so
+// fall back to "every element that still shows a mustache", which is the same
+// set from the outside and is what a visitor would be looking at.
+const mountTargets = report.mounts.length
+  ? report.mounts
+  : [...new Set(
+      [...window.document.querySelectorAll('*')]
+        .filter((el) => [...el.childNodes].some((n) => n.nodeType === 3 && /\{\{/.test(n.data)))
+        .map((el) => el.closest('[data-brew],[id]') ?? el)
+    )].map((el, i) => ({ selector: el, label: `island${i}`, resolved: true }));
+
+const preMount = mountTargets.flatMap((mount) => {
   try {
-    return [...window.document.querySelectorAll(mount.selector)].map((el, i) => ({
+    const found = mount.resolved ? [mount.selector] : [...window.document.querySelectorAll(mount.selector)];
+    return found.map((el, i) => ({
       el,
       mount,
       i,
@@ -155,13 +178,78 @@ for (const code of inlineIslandCode) {
     check(false, 'evaluating the page\'s island code', err.message);
   }
 }
+
+// Route 2: run the bridge and follow what it injects, in its own order.
+if (isRoute2 && bridge) {
+  const injected = [];
+  const append = window.document.body.appendChild.bind(window.document.body);
+  window.document.body.appendChild = (node) => {
+    if (node.tagName === 'SCRIPT' && node.src) injected.push(node);
+    return append(node);
+  };
+  try {
+    window.eval(bridge.source);
+  } catch (err) {
+    check(false, 'evaluating the bridge', err.message);
+  }
+  let guard = 0;
+  const chain = [];
+  while (injected.length && guard++ < 12) {
+    const node = injected.shift();
+    if (/localhost/.test(node.src)) {
+      check(false, 'bridge chose the dev server', `${node.src} — run this without ?debug, or start the dev server`);
+      continue;
+    }
+    // --local is the release gate, so it has to reach the route-2 path too:
+    // substitute the build we are about to publish for the CDN copy the bridge
+    // asked for. Without this, --local quietly verified nothing on route 2.
+    if (useLocal && /webflow-vue/.test(node.src)) {
+      const code = fs.readFileSync(LOCAL_BUILD, 'utf8');
+      check(code.length > 1000, `substituted local build for ${node.src}`, `${code.length} bytes`);
+      chain.push('[local build]');
+      try { window.eval(code); } catch (err) { check(false, 'evaluating the local build', err.message); }
+      if (node.onload) node.onload();
+      continue;
+    }
+    let res;
+    try {
+      res = await fetch(node.src, { redirect: 'follow' });
+    } catch (err) {
+      check(false, `fetching ${node.src}`, err.message);
+      continue;
+    }
+    if (!res.ok) { check(false, `bridge asked for ${node.src}`, `responded ${res.status}`); continue; }
+    chain.push(node.src.replace(/^https:\/\/[^/]+/, ''));
+    try { window.eval(await res.text()); } catch (err) { check(false, `evaluating ${node.src}`, err.message); }
+    if (node.onload) node.onload();
+  }
+  check(chain.length >= 3, 'bridge loaded Vue, the library and the bundle', chain.join('  →  '));
+}
+
+for (const { href, code } of sources) {
+  try {
+    window.eval(code);
+  } catch (err) {
+    check(false, `evaluating ${href}`, err.message);
+  }
+}
+check(typeof window.Vue === 'object', 'Vue global is defined');
+check(typeof window.WebflowVue === 'object', 'WebflowVue global is defined');
+check(
+  typeof window.WebflowVue?.mountIsland === 'function',
+  'WebflowVue.mountIsland exists',
+  `exports: ${Object.keys(window.WebflowVue ?? {}).join(', ')}`
+);
+
 await new Promise((r) => setTimeout(r, 50));
 
 // --- 4. assert on what is actually rendered -----------------------------
 check(islandLogs.some((l) => l.includes('mounted')), 'at least one island mounted', islandLogs.at(-1) ?? 'no [webflow-vue:*] output at all');
 
-check(preMount.length > 0, 'mount selectors match live elements',
-  report.mounts.map((m) => `${m.selector} → ${preMount.filter((p) => p.mount === m).length}`).join(', '));
+check(preMount.length > 0, 'island roots located before mount',
+  report.mounts.length
+    ? report.mounts.map((m) => `${m.selector} → ${preMount.filter((p) => p.mount === m).length}`).join(', ')
+    : `${preMount.length} root(s) found by mustache scan (route 2: selectors live in the bundle)`);
 
 for (const { el, mount, i, asks } of preMount) {
   const text = el.textContent.replace(/\s+/g, ' ').trim();
